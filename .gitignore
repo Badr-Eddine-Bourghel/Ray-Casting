@@ -1,0 +1,22 @@
+# Dependencies
+node_modules/
+
+# Compiled TypeScript output files in root
+*.js
+*.js.map
+*.d.ts
+*.d.ts.map
+
+# Build output folder (if configured in tsconfig outDir)
+dist/
+build/
+
+# Logs and environment files
+*.log
+.env
+
+# System & IDE files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
