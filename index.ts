@@ -8,6 +8,9 @@ class Vector2 {
     this.x = x;
     this.y = y;
   }
+  array(): [number, number] {
+    return [this.x, this.y];
+  }
 }
 
 (() => {
@@ -24,19 +27,27 @@ class Vector2 {
   ctx.fillStyle = "#181818";
   ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
-  const cell_width = ctx.canvas.width / GRID_COLS;
-  const cell_height = ctx.canvas.height / GRID_ROWS;
+  ctx.scale(ctx.canvas.width / GRID_COLS, ctx.canvas.height / GRID_ROWS);
+  ctx.lineWidth = 0.02;
 
   ctx.strokeStyle = "#303030";
   for (let x = 0; x <= GRID_COLS; ++x) {
-    ctx.moveTo(x * cell_width, 0);
-    ctx.lineTo(x * cell_width, ctx.canvas.height);
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, GRID_COLS);
     ctx.stroke();
   }
 
   for (let y = 0; y <= GRID_ROWS; ++y) {
-    ctx.moveTo(0, y * cell_height);
-    ctx.lineTo(ctx.canvas.width, y * cell_height);
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(GRID_ROWS, y);
     ctx.stroke();
   }
+
+  const p1 = new Vector2(GRID_COLS * 0.5, GRID_ROWS * 0.5);
+  ctx.fillStyle = "magenta";
+  ctx.beginPath();
+  ctx.arc(...p1.array(), 0.2, 0, 2 * Math.PI);
+  ctx.fill();
 })();
