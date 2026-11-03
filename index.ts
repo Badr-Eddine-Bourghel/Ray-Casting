@@ -1,6 +1,3 @@
-const GRID_ROWS = 10;
-const GRID_COLS = 10;
-
 class Vector2 {
   x: number;
   y: number;
@@ -8,9 +5,26 @@ class Vector2 {
     this.x = x;
     this.y = y;
   }
+
+  div(that: Vector2): Vector2 {
+    return new Vector2(this.x / that.x, this.y / that.y);
+  }
+
+  mul(that: Vector2): Vector2 {
+    return new Vector2(this.x * that.x, this.y * that.y);
+  }
+
   array(): [number, number] {
     return [this.x, this.y];
   }
+}
+
+const GRID_ROWS = 10;
+const GRID_COLS = 10;
+const GRID_SIZE = new Vector2(GRID_COLS, GRID_ROWS);
+
+function canvasSize(ctx: CanvasRenderingContext2D): Vector2 {
+  return new Vector2(ctx.canvas.width, ctx.canvas.height);
 }
 
 function fillCircle(
@@ -30,17 +44,12 @@ function strokeLine(ctx: CanvasRenderingContext2D, p1: Vector2, p2: Vector2) {
   ctx.stroke();
 }
 
-(() => {
-  const game = document.getElementById("game") as HTMLCanvasElement | null;
-  if (game === null) {
-    throw new Error("No canvas with id 'game' is found");
-  }
-  const ctx = game.getContext("2d");
-  game.width = 800;
-  game.height = 800;
-  if (ctx === null) {
-    throw new Error("2d context is not supported ");
-  }
+function rayStep(p1: Vector2, p2: Vector2): Vector2 {
+  return p2;
+}
+
+function grid(ctx: CanvasRenderingContext2D, p2: Vector2 | undefined) {
+  ctx.reset();
   ctx.fillStyle = "#181818";
   ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
@@ -57,10 +66,33 @@ function strokeLine(ctx: CanvasRenderingContext2D, p1: Vector2, p2: Vector2) {
   }
 
   const p1 = new Vector2(GRID_COLS * 0.43, GRID_ROWS * 0.4);
-  const p2 = new Vector2(GRID_COLS * 0.6, GRID_ROWS * 0.54);
   ctx.fillStyle = "magenta";
   fillCircle(ctx, p1, 0.2);
-  fillCircle(ctx, p2, 0.2);
-  ctx.strokeStyle = "magenta";
-  strokeLine(ctx, p1, p2);
+  if (p2 !== undefined) {
+    fillCircle(ctx, p2, 0.2);
+    ctx.strokeStyle = "magenta";
+    strokeLine(ctx, p1, p2);
+  }
+}
+
+(() => {
+  const game = document.getElementById("game") as HTMLCanvasElement | null;
+  if (game === null) {
+    throw new Error("No canvas with id 'game' is found");
+  }
+  const ctx = game.getContext("2d");
+  game.width = 800;
+  game.height = 800;
+  if (ctx === null) {
+    throw new Error("2d context is not supported ");
+  }
+
+  let p2: Vector2 | undefined = undefined;
+  game.addEventListener("mousemove", (event) => {
+    p2 = new Vector2(event.offsetX, event.offsetY)
+      .div(canvasSize(ctx))
+      .mul(new Vector2(GRID_ROWS, GRID_COLS));
+    grid(ctx, p2);
+  });
+  grid(ctx, p2);
 })();
