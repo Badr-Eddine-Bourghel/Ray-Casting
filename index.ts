@@ -13,6 +13,23 @@ class Vector2 {
   }
 }
 
+function fillCircle(
+  ctx: CanvasRenderingContext2D,
+  p1: Vector2,
+  radius: number,
+) {
+  ctx.beginPath();
+  ctx.arc(...p1.array(), 0.2, radius, 2 * Math.PI);
+  ctx.fill();
+}
+
+function strokeLine(ctx: CanvasRenderingContext2D, p1: Vector2, p2: Vector2) {
+  ctx.beginPath();
+  ctx.moveTo(...p1.array());
+  ctx.lineTo(...p2.array());
+  ctx.stroke();
+}
+
 (() => {
   const game = document.getElementById("game") as HTMLCanvasElement | null;
   if (game === null) {
@@ -32,22 +49,18 @@ class Vector2 {
 
   ctx.strokeStyle = "#303030";
   for (let x = 0; x <= GRID_COLS; ++x) {
-    ctx.beginPath();
-    ctx.moveTo(x, 0);
-    ctx.lineTo(x, GRID_COLS);
-    ctx.stroke();
+    strokeLine(ctx, new Vector2(x, 0), new Vector2(x, GRID_COLS));
   }
 
   for (let y = 0; y <= GRID_ROWS; ++y) {
-    ctx.beginPath();
-    ctx.moveTo(0, y);
-    ctx.lineTo(GRID_ROWS, y);
-    ctx.stroke();
+    strokeLine(ctx, new Vector2(0, y), new Vector2(GRID_ROWS, y));
   }
 
-  const p1 = new Vector2(GRID_COLS * 0.5, GRID_ROWS * 0.5);
+  const p1 = new Vector2(GRID_COLS * 0.43, GRID_ROWS * 0.4);
+  const p2 = new Vector2(GRID_COLS * 0.6, GRID_ROWS * 0.54);
   ctx.fillStyle = "magenta";
-  ctx.beginPath();
-  ctx.arc(...p1.array(), 0.2, 0, 2 * Math.PI);
-  ctx.fill();
+  fillCircle(ctx, p1, 0.2);
+  fillCircle(ctx, p2, 0.2);
+  ctx.strokeStyle = "magenta";
+  strokeLine(ctx, p1, p2);
 })();
