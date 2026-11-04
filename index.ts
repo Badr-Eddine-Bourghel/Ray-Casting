@@ -6,12 +6,34 @@ class Vector2 {
     this.y = y;
   }
 
+  add(that: Vector2): Vector2 {
+    return new Vector2(this.x + that.x, this.y + that.y);
+  }
+
+  sub(that: Vector2): Vector2 {
+    return new Vector2(this.x - that.x, this.y - that.y);
+  }
+
+  scale(option: number): Vector2 {
+    return new Vector2(this.x * option, this.y * option);
+  }
+
   div(that: Vector2): Vector2 {
     return new Vector2(this.x / that.x, this.y / that.y);
   }
 
   mul(that: Vector2): Vector2 {
     return new Vector2(this.x * that.x, this.y * that.y);
+  }
+
+  length(): number {
+    return Math.sqrt(Math.pow(this.x, 2) + Math.pow(this.y, 2));
+  }
+
+  norm(): Vector2 {
+    const l = this.length();
+    if (l === 0) return new Vector2(0, 0);
+    return new Vector2(this.x / l, this.y / l);
   }
 
   array(): [number, number] {
@@ -45,7 +67,7 @@ function strokeLine(ctx: CanvasRenderingContext2D, p1: Vector2, p2: Vector2) {
 }
 
 function rayStep(p1: Vector2, p2: Vector2): Vector2 {
-  return p2;
+  return p2.sub(p1).norm().add(p2);
 }
 
 function grid(ctx: CanvasRenderingContext2D, p2: Vector2 | undefined) {
@@ -72,6 +94,10 @@ function grid(ctx: CanvasRenderingContext2D, p2: Vector2 | undefined) {
     fillCircle(ctx, p2, 0.2);
     ctx.strokeStyle = "magenta";
     strokeLine(ctx, p1, p2);
+
+    const p3 = rayStep(p1, p2);
+    fillCircle(ctx, p3, 0.2);
+    strokeLine(ctx, p2, p3);
   }
 }
 
