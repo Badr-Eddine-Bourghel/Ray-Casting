@@ -45,6 +45,7 @@ class Vector2 {
   }
 }
 
+const EPS = 1e-3;
 const GRID_ROWS = 10;
 const GRID_COLS = 10;
 const GRID_SIZE = new Vector2(GRID_COLS, GRID_ROWS);
@@ -70,14 +71,21 @@ function strokeLine(ctx: CanvasRenderingContext2D, p1: Vector2, p2: Vector2) {
   ctx.stroke();
 }
 
-function snap(x: number, dx: number, eps: number): number {
-  if (dx > 0) return Math.ceil(x + eps);
-  if (dx < 0) return Math.floor(x - eps);
+function snap(x: number, dx: number): number {
+  if (dx > 0) return Math.ceil(x + EPS);
+  if (dx < 0) return Math.floor(x - EPS);
   return x;
 }
 
+function hittingCell(p1: Vector2, p2: Vector2): Vector2 {
+  const d = p2.sub(p1);
+  return new Vector2(
+    Math.floor(p2.x + Math.sign(d.x) * EPS),
+    Math.floor(p2.y + Math.sign(d.y) * EPS),
+  );
+}
+
 function rayStep(p1: Vector2, p2: Vector2): Vector2 {
-  const eps = 1e-3;
   let p3 = p2;
   const d = p2.sub(p1);
   if (d.x != 0) {
@@ -85,13 +93,13 @@ function rayStep(p1: Vector2, p2: Vector2): Vector2 {
     const c = p1.y - k * p1.x;
 
     {
-      const x3 = snap(p2.x, d.x, eps);
+      const x3 = snap(p2.x, d.x);
       const y3 = x3 * k + c;
       p3 = new Vector2(x3, y3);
     }
 
     if (k !== 0) {
-      const y3 = snap(p2.y, d.y, eps);
+      const y3 = snap(p2.y, d.y);
       const x3 = (y3 - c) / k;
       const p3t = new Vector2(x3, y3);
       if (p2.distanceTo(p3t) < p2.distanceTo(p3)) {
@@ -99,7 +107,7 @@ function rayStep(p1: Vector2, p2: Vector2): Vector2 {
       }
     }
   } else {
-    const y3 = snap(p2.y, d.y, eps);
+    const y3 = snap(p2.y, d.y);
     const x3 = p2.x;
     p3 = new Vector2(x3, y3);
   }
@@ -127,10 +135,15 @@ function grid(ctx: CanvasRenderingContext2D, p2: Vector2 | undefined) {
   ctx.fillStyle = "magenta";
   fillCircle(ctx, p1, 0.2);
   if (p2 !== undefined) {
-    for (let i = 0; i < 5; ++i) {
+    for (;;) {
       fillCircle(ctx, p2, 0.2);
       ctx.strokeStyle = "magenta";
       strokeLine(ctx, p1, p2);
+
+      const c = hittingCell(p1, p2);
+      if (c.x < 0 || c.x >= GRID_SIZE.x || c.y < 0 || c.y >= GRID_SIZE.y) {
+        break;
+      }
 
       const p3 = rayStep(p1, p2);
       p1 = p2;
