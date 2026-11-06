@@ -142,7 +142,7 @@ function minimap(
 
   ctx.translate(...position.array());
   ctx.scale(...size.div(gridSize).array());
-  ctx.lineWidth = 0.02;
+  ctx.lineWidth = 0.1;
 
   for (let y = 0; y < gridSize.y; ++y) {
     for (let x = 0; x < gridSize.x; ++x) {
@@ -190,32 +190,37 @@ function minimap(
 
 (() => {
   let scene = [
-    [0, 0, 1, 1, 0, 0, 0],
-    [0, 0, 0, 1, 0, 0, 0],
-    [0, 1, 1, 1, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 1, 1, 0, 0, 0, 0, 0],
+    [0, 0, 0, 1, 0, 0, 0, 0, 0],
+    [0, 1, 1, 1, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0],
   ];
   const game = document.getElementById("game") as HTMLCanvasElement | null;
   if (game === null) {
     throw new Error("No canvas with id 'game' is found");
   }
   const ctx = game.getContext("2d");
-  game.width = 800;
-  game.height = 800;
+  const factor = 80;
+  game.width = 16 * factor;
+  game.height = 9 * factor;
   if (ctx === null) {
     throw new Error("2d context is not supported ");
   }
 
   let p1 = sceneSize(scene).mul(new Vector2(0.93, 0.93));
   let p2: Vector2 | undefined = undefined;
+  let minimapPosition = Vector2.zero().add(canvasSize(ctx).scale(0.03));
+  let cellSize = ctx.canvas.width * 0.03;
+  let minimapSize = sceneSize(scene).scale(cellSize);
   game.addEventListener("mousemove", (event) => {
     p2 = new Vector2(event.offsetX, event.offsetY)
-      .div(canvasSize(ctx))
+      .sub(minimapPosition)
+      .div(minimapSize)
       .mul(sceneSize(scene));
-    minimap(ctx, p1, p2, Vector2.zero(), canvasSize(ctx), scene);
+    minimap(ctx, p1, p2, minimapPosition, minimapSize, scene);
   });
-  minimap(ctx, p1, p2, Vector2.zero(), canvasSize(ctx), scene);
+  minimap(ctx, p1, p2, minimapPosition, minimapSize, scene);
 })();
