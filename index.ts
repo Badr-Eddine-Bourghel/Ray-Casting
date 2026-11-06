@@ -1,6 +1,7 @@
 const EPS = 1e-3;
 const NEAR_CLIPPING_PLANE = 1;
-const FOV = Math.PI * 0.25;
+const FOV = Math.PI * 0.5;
+const SCREEN_WIDTH = 100;
 
 class Vector2 {
   x: number;
@@ -50,6 +51,10 @@ class Vector2 {
 
   distanceTo(that: Vector2): number {
     return that.sub(this).length();
+  }
+
+  lerp(that: Vector2, t: number): Vector2 {
+    return that.sub(this).scale(t).add(this);
   }
 
   array(): [number, number] {
@@ -127,6 +132,10 @@ function rayStep(p1: Vector2, p2: Vector2): Vector2 {
 
 type Scene = Array<Array<number>>;
 
+function castRay(scene: Scene, p1: Vector2, p2: Vector2): Vector2 {
+  throw new Error("CastRay not implemented");
+}
+
 function sceneSize(scene: Scene): Vector2 {
   const y = scene.length;
   let x = Number.MIN_VALUE;
@@ -174,17 +183,10 @@ function minimap(
   ctx.fillStyle = "magenta";
   fillCircle(ctx, player.position, 0.2);
 
-  const l = Math.tan(FOV * 0.5) * NEAR_CLIPPING_PLANE;
-  const p = player.position.add(
-    Vector2.fromAngle(player.direction).scale(NEAR_CLIPPING_PLANE),
-  );
-  const p1 = p.add(p.sub(player.position).rot90().norm().scale(l));
-  const p2 = p.sub(p.sub(player.position).rot90().norm().scale(l));
+  const [p1, p2] = player.fovRange();
 
   ctx.strokeStyle = "magenta";
-  strokeLine(ctx, player.position, p);
-  strokeLine(ctx, p, p1);
-  strokeLine(ctx, p, p2);
+  strokeLine(ctx, p1, p2);
   strokeLine(ctx, player.position, p1);
   strokeLine(ctx, player.position, p2);
 
@@ -197,6 +199,25 @@ class Player {
   constructor(position: Vector2, direction: number) {
     this.position = position;
     this.direction = direction;
+  }
+
+  fovRange(): [Vector2, Vector2] {
+    const l = Math.tan(FOV * 0.5) * NEAR_CLIPPING_PLANE;
+    const p = this.position.add(
+      Vector2.fromAngle(this.direction).scale(NEAR_CLIPPING_PLANE),
+    );
+    const p1 = p.add(p.sub(this.position).rot90().norm().scale(l));
+    const p2 = p.sub(p.sub(this.position).rot90().norm().scale(l));
+    return [p1, p2];
+  }
+}
+
+function render(ctx: CanvasRenderingContext2D, player: Player, scene: Scene) {
+  const [r1, r2] = player.fovRange();
+
+  for (let x = 0; x < SCREEN_WIDTH; ++x) {
+    const p = castRay(scene, player.position, r1.lerp(r2, x / SCREEN_WIDTH));
+    const c = hittingCell(player.position, p);
   }
 }
 
@@ -229,5 +250,6 @@ class Player {
   let minimapPosition = Vector2.zero().add(canvasSize(ctx).scale(0.03));
   let cellSize = ctx.canvas.width * 0.06;
   let minimapSize = sceneSize(scene).scale(cellSize);
+  render(ctx, player, scene);
   minimap(ctx, player, minimapPosition, minimapSize, scene);
 })();
