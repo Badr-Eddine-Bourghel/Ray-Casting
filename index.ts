@@ -1,7 +1,8 @@
 const EPS = 1e-3;
-const NEAR_CLIPPING_PLANE = 1;
+const NEAR_CLIPPING_PLANE = 1.0;
+const FAR_CLIPPING_PLANE = 10.0;
 const FOV = Math.PI * 0.5;
-const SCREEN_WIDTH = 100;
+const SCREEN_WIDTH = 200;
 
 class Vector2 {
   x: number;
@@ -226,15 +227,22 @@ class Player {
 }
 
 function render(ctx: CanvasRenderingContext2D, player: Player, scene: Scene) {
-  const stripWidth = ctx.canvas.width / SCREEN_WIDTH;
+  const stripWidth = Math.ceil(ctx.canvas.width / SCREEN_WIDTH);
   const [r1, r2] = player.fovRange();
 
   for (let x = 0; x < SCREEN_WIDTH; ++x) {
     const p = castRay(scene, player.position, r1.lerp(r2, x / SCREEN_WIDTH));
     const c = hittingCell(player.position, p);
     if (insideScene(scene, c) && scene[c.y][c.x] !== 0) {
-      ctx.fillStyle = "red";
-      ctx.fillRect(x * stripWidth, 0, stripWidth, ctx.canvas.height);
+      const t = 1 - p.sub(player.position).length() / FAR_CLIPPING_PLANE;
+      const stripHeigth = t * ctx.canvas.height;
+      ctx.fillStyle = `rgba(${255 * t},0,0,1)`;
+      ctx.fillRect(
+        x * stripWidth,
+        (ctx.canvas.height - stripHeigth) * 0.5,
+        stripWidth,
+        stripHeigth,
+      );
     }
   }
 }
@@ -260,18 +268,42 @@ function render(ctx: CanvasRenderingContext2D, player: Player, scene: Scene) {
   if (ctx === null) {
     throw new Error("2d context is not supported ");
   }
-
-  let player = new Player(
+  const player = new Player(
     sceneSize(scene).mul(new Vector2(0.63, 0.63)),
     Math.PI * 1.25,
   );
-  let minimapPosition = Vector2.zero().add(canvasSize(ctx).scale(0.03));
-  let cellSize = ctx.canvas.width * 0.03;
-  let minimapSize = sceneSize(scene).scale(cellSize);
+
+  const minimapPosition = Vector2.zero().add(canvasSize(ctx).scale(0.03));
+  const cellSize = ctx.canvas.width * 0.03;
+  const minimapSize = sceneSize(scene).scale(cellSize);
+
+  window.addEventListener("keydown", (e) => {
+    if (!e.repeat) {
+      switch (e.code) {
+        case "KeyD": {
+          player.direction += Math.PI * 0.1;
+          ctx.fillStyle = "#181818";
+          ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+          render(ctx, player, scene);
+          minimap(ctx, player, minimapPosition, minimapSize, scene);
+
+          break;
+        }
+        case "KeyA": {
+          player.direction -= Math.PI * 0.1;
+          ctx.fillStyle = "#181818";
+          ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+          render(ctx, player, scene);
+          minimap(ctx, player, minimapPosition, minimapSize, scene);
+
+          break;
+        }
+      }
+    }
+  });
 
   ctx.fillStyle = "#181818";
   ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-
   render(ctx, player, scene);
   minimap(ctx, player, minimapPosition, minimapSize, scene);
 })();
