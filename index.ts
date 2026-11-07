@@ -3,6 +3,7 @@ const NEAR_CLIPPING_PLANE = 1.0;
 const FAR_CLIPPING_PLANE = 10.0;
 const FOV = Math.PI * 0.5;
 const SCREEN_WIDTH = 200;
+const PLAYER_STEP_LEN = 0.5;
 
 class Vector2 {
   x: number;
@@ -158,7 +159,7 @@ function sceneSize(scene: Scene): Vector2 {
   return new Vector2(x, y);
 }
 
-function minimap(
+function renderMinimap(
   ctx: CanvasRenderingContext2D,
   player: Player,
   position: Vector2,
@@ -226,7 +227,11 @@ class Player {
   }
 }
 
-function render(ctx: CanvasRenderingContext2D, player: Player, scene: Scene) {
+function renderScene(
+  ctx: CanvasRenderingContext2D,
+  player: Player,
+  scene: Scene,
+) {
   const stripWidth = Math.ceil(ctx.canvas.width / SCREEN_WIDTH);
   const [r1, r2] = player.fovRange();
 
@@ -247,8 +252,31 @@ function render(ctx: CanvasRenderingContext2D, player: Player, scene: Scene) {
   }
 }
 
+function renderGame(
+  ctx: CanvasRenderingContext2D,
+  player: Player,
+  scene: Scene,
+) {
+  const minimapPosition = Vector2.zero().add(canvasSize(ctx).scale(0.03));
+  const cellSize = ctx.canvas.width * 0.03;
+  const minimapSize = sceneSize(scene).scale(cellSize);
+
+  ctx.fillStyle = "#181818";
+  ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+  renderScene(ctx, player, scene);
+  renderMinimap(ctx, player, minimapPosition, minimapSize, scene);
+}
+
 (() => {
-  let scene = [
+  const game = document.getElementById("game") as HTMLCanvasElement | null;
+  if (game === null) throw new Error("No canvas with id 'game' is found");
+  const ctx = game.getContext("2d");
+  const factor = 80;
+  game.width = 16 * factor;
+  game.height = 9 * factor;
+  if (ctx === null) throw new Error("2d context is not supported ");
+
+  const scene = [
     [0, 0, 1, 1, 0, 0, 0, 0, 0],
     [0, 0, 0, 1, 0, 0, 0, 0, 0],
     [0, 1, 1, 1, 0, 0, 0, 0, 0],
@@ -257,53 +285,41 @@ function render(ctx: CanvasRenderingContext2D, player: Player, scene: Scene) {
     [0, 0, 0, 0, 0, 0, 0, 0, 0],
     [0, 0, 0, 0, 0, 0, 0, 0, 0],
   ];
-  const game = document.getElementById("game") as HTMLCanvasElement | null;
-  if (game === null) {
-    throw new Error("No canvas with id 'game' is found");
-  }
-  const ctx = game.getContext("2d");
-  const factor = 80;
-  game.width = 16 * factor;
-  game.height = 9 * factor;
-  if (ctx === null) {
-    throw new Error("2d context is not supported ");
-  }
+
   const player = new Player(
     sceneSize(scene).mul(new Vector2(0.63, 0.63)),
     Math.PI * 1.25,
   );
-
-  const minimapPosition = Vector2.zero().add(canvasSize(ctx).scale(0.03));
-  const cellSize = ctx.canvas.width * 0.03;
-  const minimapSize = sceneSize(scene).scale(cellSize);
-
   window.addEventListener("keydown", (e) => {
     if (!e.repeat) {
       switch (e.code) {
+        case "KeyW": {
+          player.position = player.position.add(
+            Vector2.fromAngle(player.direction).scale(PLAYER_STEP_LEN),
+          );
+          renderGame(ctx, player, scene);
+          break;
+        }
+        case "KeyS": {
+          player.position = player.position.sub(
+            Vector2.fromAngle(player.direction).scale(PLAYER_STEP_LEN),
+          );
+          renderGame(ctx, player, scene);
+          break;
+        }
         case "KeyD": {
           player.direction += Math.PI * 0.1;
-          ctx.fillStyle = "#181818";
-          ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-          render(ctx, player, scene);
-          minimap(ctx, player, minimapPosition, minimapSize, scene);
-
+          renderGame(ctx, player, scene);
           break;
         }
         case "KeyA": {
           player.direction -= Math.PI * 0.1;
-          ctx.fillStyle = "#181818";
-          ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-          render(ctx, player, scene);
-          minimap(ctx, player, minimapPosition, minimapSize, scene);
-
+          renderGame(ctx, player, scene);
           break;
         }
       }
     }
   });
 
-  ctx.fillStyle = "#181818";
-  ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-  render(ctx, player, scene);
-  minimap(ctx, player, minimapPosition, minimapSize, scene);
+  renderGame(ctx, player, scene);
 })();
