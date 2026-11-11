@@ -45,14 +45,18 @@ class Vector2 {
     return Math.sqrt(Math.pow(this.x, 2) + Math.pow(this.y, 2));
   }
 
+  sqrLength(): number {
+    return Math.pow(this.x, 2) + Math.pow(this.y, 2);
+  }
+
   norm(): Vector2 {
     const l = this.length();
     if (l === 0) return new Vector2(0, 0);
     return new Vector2(this.x / l, this.y / l);
   }
 
-  distanceTo(that: Vector2): number {
-    return that.sub(this).length();
+  sqrDistanceTo(that: Vector2): number {
+    return that.sub(this).sqrLength();
   }
 
   lerp(that: Vector2, t: number): Vector2 {
@@ -124,7 +128,7 @@ function rayStep(p1: Vector2, p2: Vector2): Vector2 {
       const y3 = snap(p2.y, d.y);
       const x3 = (y3 - c) / k;
       const p3t = new Vector2(x3, y3);
-      if (p2.distanceTo(p3t) < p2.distanceTo(p3)) {
+      if (p2.sqrDistanceTo(p3t) < p2.sqrDistanceTo(p3)) {
         p3 = p3t;
       }
     }
@@ -144,9 +148,10 @@ function insideScene(scene: Scene, p: Vector2): boolean {
 }
 
 function castRay(scene: Scene, p1: Vector2, p2: Vector2): Vector2 {
-  for (;;) {
+  let start = p1;
+  while (start.sqrDistanceTo(p1) < FAR_CLIPPING_PLANE * FAR_CLIPPING_PLANE) {
     const c = hittingCell(p1, p2);
-    if (!insideScene(scene, c) || scene[c.y][c.x] !== null) break;
+    if (insideScene(scene, c) && scene[c.y][c.x] !== null) break;
     const p3 = rayStep(p1, p2);
     p1 = p2;
     p2 = p3;
@@ -156,7 +161,7 @@ function castRay(scene: Scene, p1: Vector2, p2: Vector2): Vector2 {
 
 function sceneSize(scene: Scene): Vector2 {
   const y = scene.length;
-  let x = Number.MIN_VALUE;
+  let x = 0;
   for (let row of scene) {
     x = Math.max(x, row.length);
   }
@@ -286,9 +291,9 @@ function renderGame(
   if (ctx === null) throw new Error("2d context is not supported ");
 
   const scene = [
-    [null, null, "cyan", "purple", null, null, null, null, null],
-    [null, null, null, "yellow", null, null, null, null, null],
-    [null, "red", "green", "blue", null, null, null, null, null],
+    [null, "red", "magenta", "pink", null, null, null, null, null],
+    [null, null, null, "blue", null, null, null, null, null],
+    [null, null, "green", "cyan", null, null, null, null, null],
     [null, null, null, null, null, null, null, null, null],
     [null, null, null, null, null, null, null, null, null],
     [null, null, null, null, null, null, null, null, null],
@@ -296,7 +301,7 @@ function renderGame(
   ];
 
   const player = new Player(
-    sceneSize(scene).mul(new Vector2(0.63, 0.63)),
+    sceneSize(scene).mul(new Vector2(0.7, 0.63)),
     Math.PI * 1.25,
   );
   window.addEventListener("keydown", (e) => {
