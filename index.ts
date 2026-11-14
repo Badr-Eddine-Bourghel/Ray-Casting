@@ -1,9 +1,10 @@
 const EPS = 1e-6;
-const NEAR_CLIPPING_PLANE = 1.0;
+const NEAR_CLIPPING_PLANE = 0.25;
 const FAR_CLIPPING_PLANE = 10.0;
 const FOV = Math.PI * 0.5;
 const SCREEN_WIDTH = 300;
 const PLAYER_STEP_LEN = 0.5;
+const PLAYER_SPEED = 2.0;
 
 class Vector2 {
   x: number;
@@ -80,11 +81,7 @@ function canvasSize(ctx: CanvasRenderingContext2D): Vector2 {
   return new Vector2(ctx.canvas.width, ctx.canvas.height);
 }
 
-function fillCircle(
-  ctx: CanvasRenderingContext2D,
-  p1: Vector2,
-  radius: number,
-) {
+function fillCircle(ctx: CanvasRenderingContext2D, p1: Vector2, radius: number) {
   ctx.beginPath();
   ctx.arc(...p1.array(), radius, 0, 2 * Math.PI);
   ctx.fill();
@@ -228,20 +225,14 @@ class Player {
 
   fovRange(): [Vector2, Vector2] {
     const l = Math.tan(FOV * 0.5) * NEAR_CLIPPING_PLANE;
-    const p = this.position.add(
-      Vector2.fromAngle(this.direction).scale(NEAR_CLIPPING_PLANE),
-    );
+    const p = this.position.add(Vector2.fromAngle(this.direction).scale(NEAR_CLIPPING_PLANE));
     const p1 = p.sub(p.sub(this.position).rot90().norm().scale(l));
     const p2 = p.add(p.sub(this.position).rot90().norm().scale(l));
     return [p1, p2];
   }
 }
 
-function renderScene(
-  ctx: CanvasRenderingContext2D,
-  player: Player,
-  scene: Scene,
-) {
+function renderScene(ctx: CanvasRenderingContext2D, player: Player, scene: Scene) {
   const stripWidth = Math.ceil(ctx.canvas.width / SCREEN_WIDTH);
   const [r1, r2] = player.fovRange();
 
@@ -266,11 +257,7 @@ function renderScene(
   }
 }
 
-function renderGame(
-  ctx: CanvasRenderingContext2D,
-  player: Player,
-  scene: Scene,
-) {
+function renderGame(ctx: CanvasRenderingContext2D, player: Player, scene: Scene) {
   const minimapPosition = Vector2.zero().add(canvasSize(ctx).scale(0.03));
   const cellSize = ctx.canvas.width * 0.03;
   const minimapSize = sceneSize(scene).scale(cellSize);
@@ -291,49 +278,92 @@ function renderGame(
   if (ctx === null) throw new Error("2d context is not supported ");
 
   const scene = [
-    [null, "red", "magenta", "pink", null, null, null, null, null],
-    [null, null, null, "blue", null, null, null, null, null],
-    [null, null, "green", "cyan", null, null, null, null, null],
+    [null, null, "cyan", "purple", null, null, null, null, null],
+    [null, null, null, "yellow", null, null, null, null, null],
+    [null, "red", "green", "blue", null, null, null, null, null],
     [null, null, null, null, null, null, null, null, null],
     [null, null, null, null, null, null, null, null, null],
     [null, null, null, null, null, null, null, null, null],
     [null, null, null, null, null, null, null, null, null],
   ];
 
-  const player = new Player(
-    sceneSize(scene).mul(new Vector2(0.7, 0.63)),
-    Math.PI * 1.25,
-  );
+  const player = new Player(sceneSize(scene).mul(new Vector2(0.7, 0.63)), Math.PI * 1.25);
+
+  let movingForword = false;
+  let movingBackword = false;
+  let turningLeft = false;
+  let turningRight = false;
+
   window.addEventListener("keydown", (e) => {
     if (!e.repeat) {
       switch (e.code) {
-        case "KeyW": {
-          player.position = player.position.add(
-            Vector2.fromAngle(player.direction).scale(PLAYER_STEP_LEN),
-          );
-          renderGame(ctx, player, scene);
+        case "KeyW":
+          movingForword = true;
           break;
-        }
-        case "KeyS": {
-          player.position = player.position.sub(
-            Vector2.fromAngle(player.direction).scale(PLAYER_STEP_LEN),
-          );
-          renderGame(ctx, player, scene);
+
+        case "KeyS":
+          movingBackword = true;
           break;
-        }
-        case "KeyD": {
-          player.direction += Math.PI * 0.1;
-          renderGame(ctx, player, scene);
+
+        case "KeyA":
+          turningLeft = true;
           break;
-        }
-        case "KeyA": {
-          player.direction -= Math.PI * 0.1;
-          renderGame(ctx, player, scene);
+
+        case "KeyD":
+          turningRight = true;
           break;
-        }
       }
     }
   });
 
-  renderGame(ctx, player, scene);
+  window.addEventListener("keyup", (e) => {
+    if (!e.repeat) {
+      switch (e.code) {
+        case "KeyW":
+          movingForword = false;
+          break;
+
+        case "KeyS":
+          movingBackword = false;
+          break;
+
+        case "KeyA":
+          turningLeft = false;
+          break;
+
+        case "KeyD":
+          turningRight = false;
+          break;
+      }
+    }
+  });
+
+  let prevTimestamp = 0;
+  const frame = (timestamp: number) => {
+    const deltaTime = (timestamp - prevTimestamp) / 1000;
+    prevTimestamp = timestamp;
+    let velocity = Vector2.zero();
+    let angular_velocity = 0.0;
+
+    if (movingForword) {
+      velocity = velocity.add(Vector2.fromAngle(player.direction).scale(PLAYER_SPEED));
+    }
+    if (movingBackword) {
+      velocity = velocity.sub(Vector2.fromAngle(player.direction).scale(PLAYER_SPEED));
+    }
+    if (turningLeft) {
+      angular_velocity -= Math.PI;
+    }
+    if (turningRight) {
+      angular_velocity += Math.PI;
+    }
+    player.direction += angular_velocity * deltaTime;
+    player.position = player.position.add(velocity.scale(deltaTime));
+    renderGame(ctx, player, scene);
+    window.requestAnimationFrame(frame);
+  };
+  window.requestAnimationFrame((timestamp) => {
+    prevTimestamp = timestamp;
+    window.requestAnimationFrame(frame);
+  });
 })();
