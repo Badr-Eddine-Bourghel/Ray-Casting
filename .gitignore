@@ -14,7 +14,7 @@ build/
 # Logs and environment files
 *.log
 .env
-
+*log
 # System & IDE files
 .DS_Store
 Thumbs.db

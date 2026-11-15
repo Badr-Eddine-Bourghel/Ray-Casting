@@ -181,7 +181,7 @@ function rayStep(p1: Vector2, p2: Vector2): Vector2 {
   return p3;
 }
 
-type Scene = Array<Array<Color | null>>;
+type Scene = Array<Array<Color | HTMLImageElement | null>>;
 
 function insideScene(scene: Scene, p: Vector2): boolean {
   const size = sceneSize(scene);
@@ -229,10 +229,12 @@ function renderMinimap(
 
   for (let y = 0; y < gridSize.y; ++y) {
     for (let x = 0; x < gridSize.x; ++x) {
-      const color = scene[y][x];
-      if (color !== null) {
-        ctx.fillStyle = color.toStyle();
+      const cell = scene[y][x];
+      if (cell instanceof Color) {
+        ctx.fillStyle = cell.toStyle();
         ctx.fillRect(x, y, 1, 1);
+      } else if (cell instanceof HTMLImageElement) {
+        ctx.drawImage(cell, x, y, 1, 1);
       }
     }
   }
@@ -284,13 +286,36 @@ function renderScene(ctx: CanvasRenderingContext2D, player: Player, scene: Scene
     const p = castRay(scene, player.position, r1.lerp(r2, x / SCREEN_WIDTH));
     const c = hittingCell(player.position, p);
     if (insideScene(scene, c)) {
-      const color = scene[c.y][c.x];
-      if (color !== null) {
+      const cell = scene[c.y][c.x];
+      if (cell instanceof Color) {
         const v = p.sub(player.position);
         const d = Vector2.fromAngle(player.direction);
         const stripHeigth = ctx.canvas.height / v.dot(d);
-        ctx.fillStyle = color.brightness(1 / v.dot(d)).toStyle();
+        ctx.fillStyle = cell.brightness(1 / v.dot(d)).toStyle();
         ctx.fillRect(
+          x * stripWidth,
+          (ctx.canvas.height - stripHeigth) * 0.5,
+          stripWidth,
+          stripHeigth,
+        );
+      } else if (cell instanceof HTMLImageElement) {
+        const v = p.sub(player.position);
+        const d = Vector2.fromAngle(player.direction);
+        const stripHeigth = ctx.canvas.height / v.dot(d);
+
+        const t = p.sub(c);
+        let u = 0;
+        if ((t.x === 0 || t.x === 1) && t.y > 0) {
+          u = t.y;
+        } else {
+          u = t.x;
+        }
+        ctx.drawImage(
+          cell,
+          u * cell.width,
+          0,
+          1,
+          cell.height,
           x * stripWidth,
           (ctx.canvas.height - stripHeigth) * 0.5,
           stripWidth,
@@ -311,8 +336,16 @@ function renderGame(ctx: CanvasRenderingContext2D, player: Player, scene: Scene)
   renderScene(ctx, player, scene);
   renderMinimap(ctx, player, minimapPosition, minimapSize, scene);
 }
+async function loadImageData(url: string): Promise<HTMLImageElement> {
+  const image = new Image();
+  image.src = url;
+  return new Promise((resolve, reject) => {
+    image.onload = () => resolve(image);
+    image.onerror = reject;
+  });
+}
 
-(() => {
+(async () => {
   const game = document.getElementById("game") as HTMLCanvasElement | null;
   if (game === null) throw new Error("No canvas with id 'game' is found");
   const ctx = game.getContext("2d");
@@ -321,13 +354,15 @@ function renderGame(ctx: CanvasRenderingContext2D, player: Player, scene: Scene)
   game.height = 9 * factor;
   if (ctx === null) throw new Error("2d context is not supported ");
 
-  const scene = [
+  const wood = await loadImageData("images/wood.png");
+
+  const scene: Scene = [
     [null, null, Color.cyan(), Color.purple(), null, null, null, null, null],
     [null, null, null, Color.yellow(), null, null, null, null, null],
-    [null, Color.red(), Color.green(), Color.blue(), null, null, null, null, null],
+    [null, Color.red(), Color.green(), wood, null, null, null, null, null],
     [null, null, null, null, null, null, null, null, null],
     [null, null, null, null, null, null, null, null, null],
-    [null, null, null, null, null, null, null, null, null],
+    [null, wood, null, null, null, null, null, null, null],
     [null, null, null, null, null, null, null, null, null],
   ];
 
