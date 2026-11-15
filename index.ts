@@ -354,15 +354,23 @@ async function loadImageData(url: string): Promise<HTMLImageElement> {
   game.height = 9 * factor;
   if (ctx === null) throw new Error("2d context is not supported ");
 
-  const wood = await loadImageData("images/wood.png");
+  const wall1 = await loadImageData("assets/images/wezu_tex_cc_by/wall1_color.png").catch(() =>
+    Color.purple(),
+  );
+  const wall2 = await loadImageData("assets/images/wezu_tex_cc_by/wall2_color.png").catch(() =>
+    Color.purple(),
+  );
+  const wall3 = await loadImageData("assets/images/wezu_tex_cc_by/wall3_color.png").catch(() =>
+    Color.purple(),
+  );
 
   const scene: Scene = [
-    [null, null, Color.cyan(), Color.purple(), null, null, null, null, null],
-    [null, null, null, Color.yellow(), null, null, null, null, null],
-    [null, Color.red(), Color.green(), wood, null, null, null, null, null],
+    [null, null, wall2, wall2, null, null, null, null],
+    [null, null, null, wall3, null, null, null, null, null],
+    [null, wall1, wall2, wall2, null, null, null, null],
     [null, null, null, null, null, null, null, null, null],
     [null, null, null, null, null, null, null, null, null],
-    [null, wood, null, null, null, null, null, null, null],
+    [null, wall1, null, null, null, null, null, null, null],
     [null, null, null, null, null, null, null, null, null],
   ];
 
