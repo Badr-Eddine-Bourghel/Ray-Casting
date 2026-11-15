@@ -6,6 +6,50 @@ const SCREEN_WIDTH = 300;
 const PLAYER_STEP_LEN = 0.5;
 const PLAYER_SPEED = 2.0;
 
+class Color {
+  r: number;
+  g: number;
+  b: number;
+  a: number;
+
+  constructor(r: number, g: number, b: number, a: number) {
+    this.r = r;
+    this.g = g;
+    this.b = b;
+    this.a = a;
+  }
+
+  static red(): Color {
+    return new Color(1, 0, 0, 1);
+  }
+  static blue(): Color {
+    return new Color(0, 0, 1, 1);
+  }
+
+  static green(): Color {
+    return new Color(0, 1, 0, 1);
+  }
+
+  static yellow(): Color {
+    return new Color(1, 1, 0, 1);
+  }
+  static purple(): Color {
+    return new Color(1, 0, 1, 1);
+  }
+
+  static cyan(): Color {
+    return new Color(0, 1, 1, 1);
+  }
+
+  brightness(factor: number) {
+    return new Color(factor * this.r, factor * this.g, factor * this.b, this.a);
+  }
+
+  toStyle(): string {
+    return `rgba(${Math.floor(this.r * 255)},${Math.floor(this.g * 255)},${Math.floor(this.b * 255)},${this.a})`;
+  }
+}
+
 class Vector2 {
   x: number;
   y: number;
@@ -137,7 +181,7 @@ function rayStep(p1: Vector2, p2: Vector2): Vector2 {
   return p3;
 }
 
-type Scene = Array<Array<string | null>>;
+type Scene = Array<Array<Color | null>>;
 
 function insideScene(scene: Scene, p: Vector2): boolean {
   const size = sceneSize(scene);
@@ -187,7 +231,7 @@ function renderMinimap(
     for (let x = 0; x < gridSize.x; ++x) {
       const color = scene[y][x];
       if (color !== null) {
-        ctx.fillStyle = color;
+        ctx.fillStyle = color.toStyle();
         ctx.fillRect(x, y, 1, 1);
       }
     }
@@ -245,7 +289,7 @@ function renderScene(ctx: CanvasRenderingContext2D, player: Player, scene: Scene
         const v = p.sub(player.position);
         const d = Vector2.fromAngle(player.direction);
         const stripHeigth = ctx.canvas.height / v.dot(d);
-        ctx.fillStyle = color;
+        ctx.fillStyle = color.brightness(1 / v.dot(d)).toStyle();
         ctx.fillRect(
           x * stripWidth,
           (ctx.canvas.height - stripHeigth) * 0.5,
@@ -278,9 +322,9 @@ function renderGame(ctx: CanvasRenderingContext2D, player: Player, scene: Scene)
   if (ctx === null) throw new Error("2d context is not supported ");
 
   const scene = [
-    [null, null, "cyan", "purple", null, null, null, null, null],
-    [null, null, null, "yellow", null, null, null, null, null],
-    [null, "red", "green", "blue", null, null, null, null, null],
+    [null, null, Color.cyan(), Color.purple(), null, null, null, null, null],
+    [null, null, null, Color.yellow(), null, null, null, null, null],
+    [null, Color.red(), Color.green(), Color.blue(), null, null, null, null, null],
     [null, null, null, null, null, null, null, null, null],
     [null, null, null, null, null, null, null, null, null],
     [null, null, null, null, null, null, null, null, null],
