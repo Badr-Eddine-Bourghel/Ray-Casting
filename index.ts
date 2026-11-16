@@ -1,10 +1,11 @@
 const EPS = 1e-6;
-const NEAR_CLIPPING_PLANE = 0.25;
+const NEAR_CLIPPING_PLANE = 0.1;
 const FAR_CLIPPING_PLANE = 10.0;
 const FOV = Math.PI * 0.5;
 const SCREEN_WIDTH = 300;
 const PLAYER_STEP_LEN = 0.5;
 const PLAYER_SPEED = 2.0;
+const PLAYER_SIZE = 0.5;
 
 class Color {
   r: number;
@@ -60,6 +61,10 @@ class Vector2 {
 
   static zero(): Vector2 {
     return new Vector2(0, 0);
+  }
+
+  static scalar(value: number): Vector2 {
+    return new Vector2(value, value);
   }
 
   static fromAngle(angle: number): Vector2 {
@@ -219,6 +224,11 @@ class Scene {
     const fp = p.map(Math.floor);
     return this.cells[fp.y * this.width + fp.x];
   }
+
+  isWall(p: Vector2): boolean {
+    const c = this.getCell(p);
+    return c !== null && c !== undefined;
+  }
 }
 
 function castRay(scene: Scene, p1: Vector2, p2: Vector2): Vector2 {
@@ -273,7 +283,13 @@ function renderMinimap(
   }
 
   ctx.fillStyle = "magenta";
-  fillCircle(ctx, player.position, 0.2);
+  // fillCircle(ctx, player.position, 0.2);
+  ctx.fillRect(
+    player.position.x - PLAYER_SIZE * 0.5,
+    player.position.y - PLAYER_SIZE * 0.5,
+    PLAYER_SIZE,
+    PLAYER_SIZE,
+  );
 
   const [p1, p2] = player.fovRange();
 
@@ -365,6 +381,18 @@ async function loadImageData(url: string): Promise<HTMLImageElement> {
     image.onload = () => resolve(image);
     image.onerror = reject;
   });
+}
+
+function canPlayerGoThere(scene: Scene, newPosition: Vector2): boolean {
+  const corner = newPosition.sub(Vector2.scalar(PLAYER_SIZE * 0.5));
+  for (let dx = 0; dx < 2; ++dx) {
+    for (let dy = 0; dy < 2; ++dy) {
+      if (scene.isWall(corner.add(new Vector2(dx, dy).scale(PLAYER_SIZE)))) {
+        return false;
+      }
+    }
+  }
+  return true;
 }
 
 (async () => {
@@ -468,8 +496,7 @@ async function loadImageData(url: string): Promise<HTMLImageElement> {
     }
     player.direction += angular_velocity * deltaTime;
     const newPosition = player.position.add(velocity.scale(deltaTime));
-    const cell = scene.getCell(newPosition);
-    if (cell === null || cell === undefined) {
+    if (canPlayerGoThere(scene, newPosition)) {
       player.position = newPosition;
     }
     renderGame(ctx, player, scene);
