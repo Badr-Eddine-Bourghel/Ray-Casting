@@ -12,7 +12,7 @@ dist/
 build/
 
 # Logs and environment files
-*.log
+*log*
 .env
 *log
 # System & IDE files

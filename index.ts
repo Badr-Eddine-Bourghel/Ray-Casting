@@ -2,12 +2,14 @@ const EPS = 1e-6;
 const NEAR_CLIPPING_PLANE = 0.1;
 const FAR_CLIPPING_PLANE = 10.0;
 const FOV = Math.PI * 0.5;
-const SCREEN_WIDTH = 300;
+const SCREEN_FACTOR = 20;
+const SCREEN_WIDTH = Math.floor(16 * SCREEN_FACTOR);
+const SCREEN_HEIGHT = Math.floor(9 * SCREEN_FACTOR);
 const PLAYER_STEP_LEN = 0.5;
 const PLAYER_SPEED = 2.0;
 const PLAYER_SIZE = 0.5;
 
-class Color {
+class RGBA {
   r: number;
   g: number;
   b: number;
@@ -20,30 +22,30 @@ class Color {
     this.a = a;
   }
 
-  static red(): Color {
-    return new Color(1, 0, 0, 1);
+  static red(): RGBA {
+    return new RGBA(1, 0, 0, 1);
   }
-  static blue(): Color {
-    return new Color(0, 0, 1, 1);
-  }
-
-  static green(): Color {
-    return new Color(0, 1, 0, 1);
+  static blue(): RGBA {
+    return new RGBA(0, 0, 1, 1);
   }
 
-  static yellow(): Color {
-    return new Color(1, 1, 0, 1);
-  }
-  static purple(): Color {
-    return new Color(1, 0, 1, 1);
+  static green(): RGBA {
+    return new RGBA(0, 1, 0, 1);
   }
 
-  static cyan(): Color {
-    return new Color(0, 1, 1, 1);
+  static yellow(): RGBA {
+    return new RGBA(1, 1, 0, 1);
+  }
+  static purple(): RGBA {
+    return new RGBA(1, 0, 1, 1);
+  }
+
+  static cyan(): RGBA {
+    return new RGBA(0, 1, 1, 1);
   }
 
   brightness(factor: number) {
-    return new Color(factor * this.r, factor * this.g, factor * this.b, this.a);
+    return new RGBA(factor * this.r, factor * this.g, factor * this.b, this.a);
   }
 
   toStyle(): string {
@@ -189,7 +191,7 @@ function rayStep(p1: Vector2, p2: Vector2): Vector2 {
   }
   return p3;
 }
-type Cell = Color | HTMLImageElement | null;
+type Cell = RGBA | HTMLImageElement | null;
 
 class Scene {
   cells: Array<Cell>;
@@ -264,7 +266,7 @@ function renderMinimap(
   for (let y = 0; y < gridSize.y; ++y) {
     for (let x = 0; x < gridSize.x; ++x) {
       const cell = scene.getCell(new Vector2(x, y));
-      if (cell instanceof Color) {
+      if (cell instanceof RGBA) {
         ctx.fillStyle = cell.toStyle();
         ctx.fillRect(x, y, 1, 1);
       } else if (cell instanceof HTMLImageElement) {
@@ -319,49 +321,58 @@ class Player {
 }
 
 function renderScene(ctx: CanvasRenderingContext2D, player: Player, scene: Scene) {
-  const stripWidth = Math.ceil(ctx.canvas.width / SCREEN_WIDTH);
+  ctx.save();
+  ctx.scale(ctx.canvas.width / SCREEN_WIDTH, ctx.canvas.height / SCREEN_HEIGHT);
   const [r1, r2] = player.fovRange();
 
   for (let x = 0; x < SCREEN_WIDTH; ++x) {
     const p = castRay(scene, player.position, r1.lerp(r2, x / SCREEN_WIDTH));
     const c = hittingCell(player.position, p);
     const cell = scene.getCell(c);
-    if (cell instanceof Color) {
+    if (cell instanceof RGBA) {
       const v = p.sub(player.position);
       const d = Vector2.fromAngle(player.direction);
-      const stripHeigth = ctx.canvas.height / v.dot(d);
+      const stripHeight = SCREEN_HEIGHT / v.dot(d);
       ctx.fillStyle = cell.brightness(1 / v.dot(d)).toStyle();
       ctx.fillRect(
-        x * stripWidth,
-        (ctx.canvas.height - stripHeigth) * 0.5,
-        stripWidth,
-        stripHeigth,
+        Math.floor(x),
+        Math.floor((SCREEN_HEIGHT - stripHeight) * 0.5),
+        Math.ceil(1),
+        Math.ceil(stripHeight),
       );
     } else if (cell instanceof HTMLImageElement) {
       const v = p.sub(player.position);
       const d = Vector2.fromAngle(player.direction);
-      const stripHeigth = ctx.canvas.height / v.dot(d);
+      const stripHeight = SCREEN_HEIGHT / v.dot(d);
 
       const t = p.sub(c);
       let u = 0;
-      if ((t.x === 0 || t.x === 1) && t.y > 0) {
+      if ((Math.abs(t.x) < EPS || Math.abs(t.x - 1) < EPS) && t.y > 0) {
         u = t.y;
       } else {
         u = t.x;
       }
       ctx.drawImage(
         cell,
-        u * cell.width,
+        Math.floor(u * cell.width),
         0,
         1,
         cell.height,
-        x * stripWidth,
-        (ctx.canvas.height - stripHeigth) * 0.5,
-        stripWidth,
-        stripHeigth,
+        Math.floor(x),
+        Math.floor((SCREEN_HEIGHT - stripHeight) * 0.5),
+        Math.ceil(1),
+        Math.ceil(stripHeight),
+      );
+      ctx.fillStyle = new RGBA(0, 0, 0, 1 - 1 / v.dot(d)).toStyle();
+      ctx.fillRect(
+        Math.floor(x),
+        Math.floor((SCREEN_HEIGHT - stripHeight) * 0.5),
+        Math.ceil(1),
+        Math.ceil(stripHeight),
       );
     }
   }
+  ctx.restore();
 }
 
 function renderGame(ctx: CanvasRenderingContext2D, player: Player, scene: Scene) {
@@ -369,8 +380,10 @@ function renderGame(ctx: CanvasRenderingContext2D, player: Player, scene: Scene)
   const cellSize = ctx.canvas.width * 0.03;
   const minimapSize = scene.size().scale(cellSize);
 
-  ctx.fillStyle = "#181818";
+  ctx.fillStyle = "hsla(0,100%,9%,1.0)";
   ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+  ctx.fillStyle = "#181818";
+  ctx.fillRect(0, ctx.canvas.height * 0.5, ctx.canvas.width, ctx.canvas.height * 0.5);
   renderScene(ctx, player, scene);
   renderMinimap(ctx, player, minimapPosition, minimapSize, scene);
 }
@@ -384,6 +397,7 @@ async function loadImageData(url: string): Promise<HTMLImageElement> {
 }
 
 function canPlayerGoThere(scene: Scene, newPosition: Vector2): boolean {
+  // TODO : Try cercle boudnry instead of a box
   const corner = newPosition.sub(Vector2.scalar(PLAYER_SIZE * 0.5));
   for (let dx = 0; dx < 2; ++dx) {
     for (let dy = 0; dy < 2; ++dy) {
@@ -405,13 +419,16 @@ function canPlayerGoThere(scene: Scene, newPosition: Vector2): boolean {
   if (ctx === null) throw new Error("2d context is not supported ");
 
   const wall1 = await loadImageData("assets/images/wezu_tex_cc_by/wall1_color.png").catch(() =>
-    Color.purple(),
+    RGBA.purple(),
   );
   const wall2 = await loadImageData("assets/images/wezu_tex_cc_by/wall2_color.png").catch(() =>
-    Color.purple(),
+    RGBA.purple(),
   );
   const wall3 = await loadImageData("assets/images/wezu_tex_cc_by/wall3_color.png").catch(() =>
-    Color.purple(),
+    RGBA.purple(),
+  );
+  const floor = await loadImageData("assets/images/wests_textures/stone wall 10.png").catch(() =>
+    RGBA.purple(),
   );
 
   const scene: Scene = new Scene([
@@ -420,7 +437,7 @@ function canPlayerGoThere(scene: Scene, newPosition: Vector2): boolean {
     [null, wall1, wall2, wall2, null, null, null, null, null],
     [null, null, null, null, null, null, null, null, null],
     [null, null, null, null, null, null, null, null, null],
-    [null, wall1, null, null, null, null, null, null, null],
+    [null, floor, null, null, null, null, null, null, null],
     [null, null, null, null, null, null, null, null, null],
   ]);
 
@@ -507,3 +524,5 @@ function canPlayerGoThere(scene: Scene, newPosition: Vector2): boolean {
     window.requestAnimationFrame(frame);
   });
 })();
+
+// TODO : trying lighting with normal maps that come with some of the assests
