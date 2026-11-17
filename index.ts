@@ -320,7 +320,7 @@ class Player {
   }
 }
 
-function renderScene(ctx: CanvasRenderingContext2D, player: Player, scene: Scene) {
+function renderWalls(ctx: CanvasRenderingContext2D, player: Player, scene: Scene) {
   ctx.save();
   ctx.scale(ctx.canvas.width / SCREEN_WIDTH, ctx.canvas.height / SCREEN_HEIGHT);
   const [r1, r2] = player.fovRange();
@@ -384,7 +384,7 @@ function renderGame(ctx: CanvasRenderingContext2D, player: Player, scene: Scene)
   ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
   ctx.fillStyle = "#181818";
   ctx.fillRect(0, ctx.canvas.height * 0.5, ctx.canvas.width, ctx.canvas.height * 0.5);
-  renderScene(ctx, player, scene);
+  renderWalls(ctx, player, scene);
   renderMinimap(ctx, player, minimapPosition, minimapSize, scene);
 }
 async function loadImageData(url: string): Promise<HTMLImageElement> {
@@ -516,6 +516,7 @@ function canPlayerGoThere(scene: Scene, newPosition: Vector2): boolean {
     if (canPlayerGoThere(scene, new Vector2(nx, player.position.y))) player.position.x = nx;
     const ny = player.position.y + velocity.y * deltaTime;
     if (canPlayerGoThere(scene, new Vector2(player.position.x, ny))) player.position.y = ny;
+    renderGame(ctx, player, scene);
     window.requestAnimationFrame(frame);
   };
   window.requestAnimationFrame((timestamp) => {

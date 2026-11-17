@@ -258,7 +258,7 @@ class Player {
         return [p1, p2];
     }
 }
-function renderScene(ctx, player, scene) {
+function renderWalls(ctx, player, scene) {
     ctx.save();
     ctx.scale(ctx.canvas.width / SCREEN_WIDTH, ctx.canvas.height / SCREEN_HEIGHT);
     const [r1, r2] = player.fovRange();
@@ -300,7 +300,7 @@ function renderGame(ctx, player, scene) {
     ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
     ctx.fillStyle = "#181818";
     ctx.fillRect(0, ctx.canvas.height * 0.5, ctx.canvas.width, ctx.canvas.height * 0.5);
-    renderScene(ctx, player, scene);
+    renderWalls(ctx, player, scene);
     renderMinimap(ctx, player, minimapPosition, minimapSize, scene);
 }
 async function loadImageData(url) {
@@ -412,6 +412,7 @@ function canPlayerGoThere(scene, newPosition) {
         const ny = player.position.y + velocity.y * deltaTime;
         if (canPlayerGoThere(scene, new Vector2(player.position.x, ny)))
             player.position.y = ny;
+        renderGame(ctx, player, scene);
         window.requestAnimationFrame(frame);
     };
     window.requestAnimationFrame((timestamp) => {
