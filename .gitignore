@@ -2,7 +2,6 @@
 node_modules/
 
 # Compiled TypeScript output files in root
-*.js
 *.js.map
 *.d.ts
 *.d.ts.map
