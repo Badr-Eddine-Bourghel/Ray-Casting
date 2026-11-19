@@ -3,7 +3,7 @@ const EPS = 1e-6;
 const NEAR_CLIPPING_PLANE = 0.1;
 const FAR_CLIPPING_PLANE = 20.0;
 const FOV = Math.PI * 0.5;
-const SCREEN_FACTOR = 20;
+const SCREEN_FACTOR = 10;
 const SCREEN_WIDTH = Math.floor(16 * SCREEN_FACTOR);
 const SCREEN_HEIGHT = Math.floor(9 * SCREEN_FACTOR);
 const PLAYER_STEP_LEN = 0.5;
@@ -178,11 +178,15 @@ class Scene {
     cells;
     width;
     height;
-    color1;
-    color2;
+    floor1;
+    floor2;
+    ceiling1;
+    ceiling2;
     constructor(cells) {
-        this.color1 = new RGBA(0.094, 0.094, 0.094, 1);
-        this.color2 = new RGBA(0.188, 0.188, 0.188, 1);
+        this.floor1 = new RGBA(0.094, 0.094, 0.094, 1);
+        this.floor2 = new RGBA(0.188, 0.188, 0.188, 1);
+        this.ceiling1 = RGBA.red();
+        this.ceiling2 = RGBA.blue();
         this.height = cells.length;
         this.width = Number.MIN_VALUE;
         for (let row of cells) {
@@ -215,10 +219,19 @@ class Scene {
     getFloor(p) {
         const t = p.map(Math.floor);
         if ((t.x + t.y) % 2 === 0) {
-            return this.color1;
+            return this.floor1;
         }
         else {
-            return this.color2;
+            return this.floor2;
+        }
+    }
+    getCeiling(p) {
+        const t = p.map(Math.floor);
+        if ((t.x + t.y) % 2 === 0) {
+            return this.ceiling1;
+        }
+        else {
+            return this.ceiling2;
         }
     }
 }
@@ -269,6 +282,33 @@ function renderMinimap(ctx, player, position, size, scene) {
     strokeLine(ctx, p1, p2);
     strokeLine(ctx, player.position, p1);
     strokeLine(ctx, player.position, p2);
+    ctx.restore();
+}
+function renderCeiling(ctx, player, scene) {
+    ctx.save();
+    ctx.scale(ctx.canvas.width / SCREEN_WIDTH, ctx.canvas.height / SCREEN_HEIGHT);
+    const pz = SCREEN_HEIGHT / 2;
+    const [p1, p2] = player.fovRange();
+    const bp = p1.sub(player.position).length();
+    for (let y = SCREEN_HEIGHT / 2; y < SCREEN_HEIGHT; ++y) {
+        const sz = SCREEN_HEIGHT - y - 1;
+        const ap = pz - sz;
+        const b = ((bp / ap) * pz) / NEAR_CLIPPING_PLANE;
+        const t1 = player.position.add(p1.sub(player.position).norm().scale(b));
+        const t2 = player.position.add(p2.sub(player.position).norm().scale(b));
+        for (let x = 0; x < SCREEN_WIDTH; ++x) {
+            const t = t1.lerp(t2, x / SCREEN_WIDTH);
+            const tile = scene.getCeiling(t);
+            if (tile instanceof RGBA) {
+                ctx.fillStyle = tile.toStyle();
+                ctx.fillRect(x, sz, 1, 1);
+            }
+            else if (tile instanceof HTMLImageElement) {
+                const c = t.map((x) => x - Math.floor(x));
+                ctx.drawImage(tile, Math.floor(c.x * tile.width), Math.floor(c.y * tile.height), 1, 1, x, y, 1, 1);
+            }
+        }
+    }
     ctx.restore();
 }
 function renderFloor(ctx, player, scene) {
@@ -336,10 +376,7 @@ function renderGame(ctx, player, scene) {
     const minimapPosition = Vector2.zero().add(canvasSize(ctx).scale(0.03));
     const cellSize = ctx.canvas.width * 0.03;
     const minimapSize = scene.size().scale(cellSize);
-    ctx.fillStyle = "#181818";
-    ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-    ctx.fillStyle = "hsla(0,100%,9%,1.0)";
-    ctx.fillRect(0, ctx.canvas.height * 0.5, ctx.canvas.width, ctx.canvas.height * 0.5);
+    renderCeiling(ctx, player, scene);
     renderFloor(ctx, player, scene);
     renderWalls(ctx, player, scene);
     renderMinimap(ctx, player, minimapPosition, minimapSize, scene);
