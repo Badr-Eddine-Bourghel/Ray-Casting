@@ -2,7 +2,7 @@ const EPS = 1e-6;
 const NEAR_CLIPPING_PLANE = 0.1;
 const FAR_CLIPPING_PLANE = 20.0;
 const FOV = Math.PI * 0.5;
-const SCREEN_FACTOR = 10;
+const SCREEN_FACTOR = 20;
 const SCREEN_WIDTH = Math.floor(16 * SCREEN_FACTOR);
 const SCREEN_HEIGHT = Math.floor(9 * SCREEN_FACTOR);
 const PLAYER_STEP_LEN = 0.5;
@@ -36,6 +36,7 @@ class RGBA {
   static yellow(): RGBA {
     return new RGBA(1, 1, 0, 1);
   }
+
   static purple(): RGBA {
     return new RGBA(1, 0, 1, 1);
   }
@@ -388,6 +389,19 @@ function renderCeiling(ctx: CanvasRenderingContext2D, player: Player, scene: Sce
   ctx.restore();
 }
 
+function fog(ctx: CanvasRenderingContext2D) {
+  ctx.save();
+  ctx.scale(ctx.canvas.width / SCREEN_WIDTH, ctx.canvas.height / SCREEN_HEIGHT);
+
+  for (let y = 0; y < SCREEN_HEIGHT; ++y) {
+    const opacity = 1 - Math.abs(y - SCREEN_HEIGHT / 2) / (SCREEN_HEIGHT / 2);
+    ctx.fillStyle = new RGBA(0, 0, 0, opacity).toStyle();
+    ctx.fillRect(0, y, ctx.canvas.width, 1);
+  }
+
+  ctx.restore();
+}
+
 function renderFloor(ctx: CanvasRenderingContext2D, player: Player, scene: Scene) {
   ctx.save();
   ctx.scale(ctx.canvas.width / SCREEN_WIDTH, ctx.canvas.height / SCREEN_HEIGHT);
@@ -491,6 +505,7 @@ function renderGame(ctx: CanvasRenderingContext2D, player: Player, scene: Scene)
 
   renderCeiling(ctx, player, scene);
   renderFloor(ctx, player, scene);
+  fog(ctx);
   renderWalls(ctx, player, scene);
   renderMinimap(ctx, player, minimapPosition, minimapSize, scene);
 }
