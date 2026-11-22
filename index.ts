@@ -616,11 +616,31 @@ function renderWalls(ctx: CanvasRenderingContext2D, player: Player, scene: Scene
   ctx.restore();
 }
 
-function renderGameIntoImageData(imageData: ImageData, player: Player, scene: Scene) {
-  imageData.data.fill(255);
-  renderCeilingToImageData(imageData, player, scene);
-  renderFloorToImageData(imageData, player, scene);
-  renderWallsToImageData(imageData, player, scene);
+function renderGameIntoImageData(
+  ctx: CanvasRenderingContext2D,
+  backCtx: OffscreenCanvasRenderingContext2D,
+  backImageData: ImageData,
+  deltaTime: number,
+  player: Player,
+  scene: Scene,
+) {
+  const minimapPosition = Vector2.zero().add(canvasSize(ctx).scale(0.03));
+  const cellSize = ctx.canvas.width * 0.03;
+  const minimapSize = scene.size().scale(cellSize);
+
+  backImageData.data.fill(255);
+  renderCeilingToImageData(backImageData, player, scene);
+  renderFloorToImageData(backImageData, player, scene);
+  renderWallsToImageData(backImageData, player, scene);
+
+  backCtx.putImageData(backImageData, 0, 0);
+  ctx.drawImage(backCtx.canvas, 0, 0, ctx.canvas.width, ctx.canvas.height);
+
+  renderMinimap(ctx, player, minimapPosition, minimapSize, scene);
+
+  ctx.font = "48px bold";
+  ctx.fillStyle = "white";
+  ctx.fillText(`${Math.floor(1 / deltaTime)}`, 100, 100);
 }
 
 function renderGame(ctx: CanvasRenderingContext2D, player: Player, scene: Scene) {
@@ -796,11 +816,7 @@ function testBackCanvas(ctx: CanvasRenderingContext2D) {
     const ny = player.position.y + velocity.y * deltaTime;
     if (canPlayerGoThere(scene, new Vector2(player.position.x, ny))) player.position.y = ny;
     // renderGame(ctx, player, scene);
-    renderGameIntoImageData(backImageData, player, scene);
-    backCtx.putImageData(backImageData, 0, 0);
-    ctx.drawImage(backCanvas, 0, 0, ctx.canvas.width, ctx.canvas.height);
-    ctx.font = "48px bold";
-    ctx.fillText(`${Math.floor(1 / deltaTime)}`, 100, 100);
+    renderGameIntoImageData(ctx, backCtx, backImageData, deltaTime, player, scene);
     window.requestAnimationFrame(frame);
   };
   window.requestAnimationFrame((timestamp) => {
