@@ -510,34 +510,6 @@ function canPlayerGoThere(scene: Scene, newPosition: Vector2): boolean {
   return true;
 }
 
-function testBackCanvas(ctx: CanvasRenderingContext2D) {
-  const h = 9;
-  const w = 16;
-  const backImageData = new ImageData(w, h);
-  const backCanvas = new OffscreenCanvas(w, h);
-  const backCtx = backCanvas.getContext("2d");
-  if (backCtx === null) throw new Error("2D context is not supported");
-
-  for (let y = 0; y < h; ++y) {
-    for (let x = 0; x < w; ++x) {
-      if ((x + y) % 2 === 0) {
-        backImageData.data[(y * w + x) * 4 + 0] = 255;
-        backImageData.data[(y * w + x) * 4 + 1] = 0;
-        backImageData.data[(y * w + x) * 4 + 2] = 0;
-        backImageData.data[(y * w + x) * 4 + 3] = 255;
-      } else {
-        backImageData.data[(y * w + x) * 4 + 0] = 255;
-        backImageData.data[(y * w + x) * 4 + 1] = 255;
-        backImageData.data[(y * w + x) * 4 + 2] = 255;
-        backImageData.data[(y * w + x) * 4 + 3] = 255;
-      }
-    }
-  }
-
-  backCtx.putImageData(backImageData, 0, 0);
-  ctx.drawImage(backCanvas, 0, 0, ctx.canvas.width, ctx.canvas.height);
-}
-
 (async () => {
   const game = document.getElementById("game") as HTMLCanvasElement | null;
   if (game === null) throw new Error("No canvas with id 'game' is found");
