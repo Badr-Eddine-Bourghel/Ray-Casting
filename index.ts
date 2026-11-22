@@ -209,7 +209,7 @@ function rayStep(p1: Vector2, p2: Vector2): Vector2 {
   }
   return p3;
 }
-type Tile = RGBA | HTMLImageElement | null;
+type Tile = RGBA | ImageData | HTMLImageElement | null;
 
 class Scene {
   cells: Array<Tile>;
@@ -410,19 +410,6 @@ function renderCeiling(ctx: CanvasRenderingContext2D, player: Player, scene: Sce
         );
       }
     }
-  }
-
-  ctx.restore();
-}
-
-function fog(ctx: CanvasRenderingContext2D) {
-  ctx.save();
-  ctx.scale(ctx.canvas.width / SCREEN_WIDTH, ctx.canvas.height / SCREEN_HEIGHT);
-
-  for (let y = 0; y < SCREEN_HEIGHT; ++y) {
-    const opacity = 1 - Math.abs(y - SCREEN_HEIGHT / 2) / (SCREEN_HEIGHT / 2);
-    ctx.fillStyle = new RGBA(0, 0, 0, opacity).toStyle();
-    ctx.fillRect(0, y, ctx.canvas.width, 1);
   }
 
   ctx.restore();
@@ -650,17 +637,25 @@ function renderGame(ctx: CanvasRenderingContext2D, player: Player, scene: Scene)
 
   renderCeiling(ctx, player, scene);
   renderFloor(ctx, player, scene);
-  fog(ctx);
   renderWalls(ctx, player, scene);
   renderMinimap(ctx, player, minimapPosition, minimapSize, scene);
 }
-async function loadImageData(url: string): Promise<HTMLImageElement> {
+async function loadImage(url: string): Promise<HTMLImageElement> {
   const image = new Image();
   image.src = url;
   return new Promise((resolve, reject) => {
     image.onload = () => resolve(image);
     image.onerror = reject;
   });
+}
+
+async function loadImageData(url: string): Promise<ImageData> {
+  const image = await loadImage(url);
+  const canvas = new OffscreenCanvas(image.width, image.height);
+  const ctx = canvas.getContext("2d");
+  if (ctx === null) throw new Error("2D context is not supported");
+  ctx.drawImage(image, 0, 0);
+  return ctx.getImageData(0, 0, image.width, image.height);
 }
 
 function canPlayerGoThere(scene: Scene, newPosition: Vector2): boolean {
