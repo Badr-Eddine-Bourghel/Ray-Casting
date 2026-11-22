@@ -209,7 +209,7 @@ function rayStep(p1: Vector2, p2: Vector2): Vector2 {
   }
   return p3;
 }
-type Tile = RGBA | ImageData | HTMLImageElement | null;
+type Tile = RGBA | ImageData | null;
 
 class Scene {
   cells: Array<Tile>;
@@ -314,8 +314,8 @@ function renderMinimap(
       if (cell instanceof RGBA) {
         ctx.fillStyle = cell.toStyle();
         ctx.fillRect(x, y, 1, 1);
-      } else if (cell instanceof HTMLImageElement) {
-        ctx.drawImage(cell, x, y, 1, 1);
+      } else if (cell instanceof ImageData) {
+        // TODO : Render ImageData Tiles
       }
     }
   }
@@ -374,47 +374,6 @@ function renderCeilingToImageData(imageData: ImageData, player: Player, scene: S
   }
 }
 
-function renderCeiling(ctx: CanvasRenderingContext2D, player: Player, scene: Scene) {
-  ctx.save();
-  ctx.scale(ctx.canvas.width / SCREEN_WIDTH, ctx.canvas.height / SCREEN_HEIGHT);
-
-  const pz = SCREEN_HEIGHT / 2;
-  const [p1, p2] = player.fovRange();
-  const bp = p1.sub(player.position).length();
-  for (let y = SCREEN_HEIGHT / 2; y < SCREEN_HEIGHT; ++y) {
-    const sz = SCREEN_HEIGHT - y - 1;
-
-    const ap = pz - sz;
-    const b = ((bp / ap) * pz) / NEAR_CLIPPING_PLANE;
-    const t1 = player.position.add(p1.sub(player.position).norm().scale(b));
-    const t2 = player.position.add(p2.sub(player.position).norm().scale(b));
-
-    for (let x = 0; x < SCREEN_WIDTH; ++x) {
-      const t = t1.lerp(t2, x / SCREEN_WIDTH);
-      const tile = scene.getCeiling(t);
-      if (tile instanceof RGBA) {
-        ctx.fillStyle = tile.brightness(1 / Math.sqrt(player.position.sqrDistanceTo(t))).toStyle();
-        ctx.fillRect(x, sz, 1, 1);
-      } else if (tile instanceof HTMLImageElement) {
-        const c = t.map((x) => x - Math.floor(x));
-        ctx.drawImage(
-          tile,
-          Math.floor(c.x * tile.width),
-          Math.floor(c.y * tile.height),
-          1,
-          1,
-          x,
-          y,
-          1,
-          1,
-        );
-      }
-    }
-  }
-
-  ctx.restore();
-}
-
 function renderFloorToImageData(imageData: ImageData, player: Player, scene: Scene) {
   const pz = SCREEN_HEIGHT / 2;
   const [p1, p2] = player.fovRange();
@@ -439,47 +398,6 @@ function renderFloorToImageData(imageData: ImageData, player: Player, scene: Sce
       }
     }
   }
-}
-
-function renderFloor(ctx: CanvasRenderingContext2D, player: Player, scene: Scene) {
-  ctx.save();
-  ctx.scale(ctx.canvas.width / SCREEN_WIDTH, ctx.canvas.height / SCREEN_HEIGHT);
-
-  const pz = SCREEN_HEIGHT / 2;
-  const [p1, p2] = player.fovRange();
-  const bp = p1.sub(player.position).length();
-  for (let y = SCREEN_HEIGHT / 2; y < SCREEN_HEIGHT; ++y) {
-    const sz = SCREEN_HEIGHT - y - 1;
-
-    const ap = pz - sz;
-    const b = ((bp / ap) * pz) / NEAR_CLIPPING_PLANE;
-    const t1 = player.position.add(p1.sub(player.position).norm().scale(b));
-    const t2 = player.position.add(p2.sub(player.position).norm().scale(b));
-
-    for (let x = 0; x < SCREEN_WIDTH; ++x) {
-      const t = t1.lerp(t2, x / SCREEN_WIDTH);
-      const tile = scene.getFloor(t);
-      if (tile instanceof RGBA) {
-        ctx.fillStyle = tile.brightness(1 / Math.sqrt(player.position.sqrDistanceTo(t))).toStyle();
-        ctx.fillRect(x, y, 1, 1);
-      } else if (tile instanceof HTMLImageElement) {
-        const c = t.map((x) => x - Math.floor(x));
-        ctx.drawImage(
-          tile,
-          Math.floor(c.x * tile.width),
-          Math.floor(c.y * tile.height),
-          1,
-          1,
-          x,
-          y,
-          1,
-          1,
-        );
-      }
-    }
-  }
-
-  ctx.restore();
 }
 
 function renderWallsToImageData(imageData: ImageData, player: Player, scene: Scene) {
@@ -515,93 +433,20 @@ function renderWallsToImageData(imageData: ImageData, player: Player, scene: Sce
       }
 
       for (let dy = 0; dy < Math.ceil(stripHeight); ++dy) {
-        const v = dy / Math.ceil(stripHeight);
         const tx = Math.floor(u * cell.width);
-        const ty = Math.floor(v * cell.height);
+        const ty = Math.floor((dy / Math.ceil(stripHeight)) * cell.height);
 
         const y = Math.floor((SCREEN_HEIGHT - stripHeight) * 0.5) + dy;
-        imageData.data[(y * SCREEN_WIDTH + x) * 4 + 0] = cell.data[(ty * cell.width + tx) * 4 + 0];
-        imageData.data[(y * SCREEN_WIDTH + x) * 4 + 1] = cell.data[(ty * cell.width + tx) * 4 + 1];
-        imageData.data[(y * SCREEN_WIDTH + x) * 4 + 2] = cell.data[(ty * cell.width + tx) * 4 + 2];
+        imageData.data[(y * SCREEN_WIDTH + x) * 4 + 0] =
+          cell.data[(ty * cell.width + tx) * 4 + 0] / v.dot(d);
+        imageData.data[(y * SCREEN_WIDTH + x) * 4 + 1] =
+          cell.data[(ty * cell.width + tx) * 4 + 1] / v.dot(d);
+        imageData.data[(y * SCREEN_WIDTH + x) * 4 + 2] =
+          cell.data[(ty * cell.width + tx) * 4 + 2] / v.dot(d);
         imageData.data[(y * SCREEN_WIDTH + x) * 4 + 3] = cell.data[(ty * cell.width + tx) * 4 + 3];
       }
-      /*
-      ctx.drawImage(
-        cell,
-        Math.floor(u * cell.width),
-        0,
-        1,
-        cell.height,
-        Math.floor(x),
-        Math.floor((SCREEN_HEIGHT - stripHeight) * 0.5),
-        Math.ceil(1),
-        Math.ceil(stripHeight),
-      );
-      ctx.fillStyle = new RGBA(0, 0, 0, 1 - 1 / v.dot(d)).toStyle();
-      ctx.fillRect(
-        Math.floor(x),
-        Math.floor((SCREEN_HEIGHT - stripHeight) * 0.5),
-        Math.ceil(1),
-        Math.ceil(stripHeight),
-      );
-      */
     }
   }
-}
-
-function renderWalls(ctx: CanvasRenderingContext2D, player: Player, scene: Scene) {
-  ctx.save();
-  ctx.scale(ctx.canvas.width / SCREEN_WIDTH, ctx.canvas.height / SCREEN_HEIGHT);
-  const [r1, r2] = player.fovRange();
-
-  for (let x = 0; x < SCREEN_WIDTH; ++x) {
-    const p = castRay(scene, player.position, r1.lerp(r2, x / SCREEN_WIDTH));
-    const c = hittingCell(player.position, p);
-    const cell = scene.getWall(c);
-    if (cell instanceof RGBA) {
-      const v = p.sub(player.position);
-      const d = Vector2.fromAngle(player.direction);
-      const stripHeight = SCREEN_HEIGHT / v.dot(d);
-      ctx.fillStyle = cell.brightness(1 / v.dot(d)).toStyle();
-      ctx.fillRect(
-        Math.floor(x),
-        Math.floor((SCREEN_HEIGHT - stripHeight) * 0.5),
-        Math.ceil(1),
-        Math.ceil(stripHeight),
-      );
-    } else if (cell instanceof HTMLImageElement) {
-      const v = p.sub(player.position);
-      const d = Vector2.fromAngle(player.direction);
-      const stripHeight = SCREEN_HEIGHT / v.dot(d);
-
-      const t = p.sub(c);
-      let u = 0;
-      if ((Math.abs(t.x) < EPS || Math.abs(t.x - 1) < EPS) && t.y > 0) {
-        u = t.y;
-      } else {
-        u = t.x;
-      }
-      ctx.drawImage(
-        cell,
-        Math.floor(u * cell.width),
-        0,
-        1,
-        cell.height,
-        Math.floor(x),
-        Math.floor((SCREEN_HEIGHT - stripHeight) * 0.5),
-        Math.ceil(1),
-        Math.ceil(stripHeight),
-      );
-      ctx.fillStyle = new RGBA(0, 0, 0, 1 - 1 / v.dot(d)).toStyle();
-      ctx.fillRect(
-        Math.floor(x),
-        Math.floor((SCREEN_HEIGHT - stripHeight) * 0.5),
-        Math.ceil(1),
-        Math.ceil(stripHeight),
-      );
-    }
-  }
-  ctx.restore();
 }
 
 function renderGameIntoImageData(
@@ -629,17 +474,6 @@ function renderGameIntoImageData(
   ctx.font = "48px bold";
   ctx.fillStyle = "white";
   ctx.fillText(`${Math.floor(1 / deltaTime)}`, 100, 100);
-}
-
-function renderGame(ctx: CanvasRenderingContext2D, player: Player, scene: Scene) {
-  const minimapPosition = Vector2.zero().add(canvasSize(ctx).scale(0.03));
-  const cellSize = ctx.canvas.width * 0.03;
-  const minimapSize = scene.size().scale(cellSize);
-
-  renderCeiling(ctx, player, scene);
-  renderFloor(ctx, player, scene);
-  renderWalls(ctx, player, scene);
-  renderMinimap(ctx, player, minimapPosition, minimapSize, scene);
 }
 
 async function loadImage(url: string): Promise<HTMLImageElement> {
@@ -812,7 +646,6 @@ function testBackCanvas(ctx: CanvasRenderingContext2D) {
     if (canPlayerGoThere(scene, new Vector2(nx, player.position.y))) player.position.x = nx;
     const ny = player.position.y + velocity.y * deltaTime;
     if (canPlayerGoThere(scene, new Vector2(player.position.x, ny))) player.position.y = ny;
-    // renderGame(ctx, player, scene);
     renderGameIntoImageData(ctx, backCtx, backImageData, deltaTime, player, scene);
     window.requestAnimationFrame(frame);
   };
