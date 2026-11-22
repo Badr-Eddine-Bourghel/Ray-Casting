@@ -2,7 +2,7 @@ const EPS = 1e-6;
 const NEAR_CLIPPING_PLANE = 0.1;
 const FAR_CLIPPING_PLANE = 20.0;
 const FOV = Math.PI * 0.5;
-const SCREEN_FACTOR = 20;
+const SCREEN_FACTOR = 50;
 const SCREEN_WIDTH = Math.floor(16 * SCREEN_FACTOR);
 const SCREEN_HEIGHT = Math.floor(9 * SCREEN_FACTOR);
 const PLAYER_STEP_LEN = 0.5;
@@ -260,8 +260,7 @@ class Scene {
   }
 
   getFloor(p: Vector2): Tile | undefined {
-    const t = p.map(Math.floor);
-    if ((t.x + t.y) % 2 === 0) {
+    if ((Math.floor(p.x) + Math.floor(p.y)) % 2 === 0) {
       return this.floor1;
     } else {
       return this.floor2;
@@ -269,8 +268,7 @@ class Scene {
   }
 
   getCeiling(p: Vector2): Tile | undefined {
-    const t = p.map(Math.floor);
-    if ((t.x + t.y) % 2 === 0) {
+    if ((Math.floor(p.x) + Math.floor(p.y)) % 2 === 0) {
       return this.ceiling1;
     } else {
       return this.ceiling2;
@@ -352,7 +350,7 @@ function renderCeilingToImageData(imageData: ImageData, player: Player, scene: S
   const pz = SCREEN_HEIGHT / 2;
   const [p1, p2] = player.fovRange();
   const bp = p1.sub(player.position).length();
-  for (let y = SCREEN_HEIGHT / 2; y < SCREEN_HEIGHT; ++y) {
+  for (let y = Math.floor(SCREEN_HEIGHT / 2); y < SCREEN_HEIGHT; ++y) {
     const sz = SCREEN_HEIGHT - y - 1;
 
     const ap = pz - sz;
@@ -364,11 +362,12 @@ function renderCeilingToImageData(imageData: ImageData, player: Player, scene: S
       const t = t1.lerp(t2, x / SCREEN_WIDTH);
       const tile = scene.getCeiling(t);
       if (tile instanceof RGBA) {
-        const color = tile.brightness(1 / Math.sqrt(player.position.sqrDistanceTo(t)));
-        imageData.data[(sz * SCREEN_WIDTH + x) * 4 + 0] = color.r * 255;
-        imageData.data[(sz * SCREEN_WIDTH + x) * 4 + 1] = color.g * 255;
-        imageData.data[(sz * SCREEN_WIDTH + x) * 4 + 2] = color.b * 255;
-        imageData.data[(sz * SCREEN_WIDTH + x) * 4 + 3] = color.a * 255;
+        const color = tile.brightness(Math.sqrt(player.position.sqrDistanceTo(t)));
+        const destP = (sz * SCREEN_WIDTH + x) * 4;
+        imageData.data[destP + 0] = color.r * 255;
+        imageData.data[destP + 1] = color.g * 255;
+        imageData.data[destP + 2] = color.b * 255;
+        imageData.data[destP + 3] = color.a * 255;
       }
     }
   }
@@ -378,7 +377,7 @@ function renderFloorToImageData(imageData: ImageData, player: Player, scene: Sce
   const pz = SCREEN_HEIGHT / 2;
   const [p1, p2] = player.fovRange();
   const bp = p1.sub(player.position).length();
-  for (let y = SCREEN_HEIGHT / 2; y < SCREEN_HEIGHT; ++y) {
+  for (let y = Math.floor(SCREEN_HEIGHT / 2); y < SCREEN_HEIGHT; ++y) {
     const sz = SCREEN_HEIGHT - y - 1;
 
     const ap = pz - sz;
@@ -390,11 +389,12 @@ function renderFloorToImageData(imageData: ImageData, player: Player, scene: Sce
       const t = t1.lerp(t2, x / SCREEN_WIDTH);
       const tile = scene.getFloor(t);
       if (tile instanceof RGBA) {
-        const color = tile.brightness(1 / Math.sqrt(player.position.sqrDistanceTo(t)));
-        imageData.data[(y * SCREEN_WIDTH + x) * 4 + 0] = color.r * 255;
-        imageData.data[(y * SCREEN_WIDTH + x) * 4 + 1] = color.g * 255;
-        imageData.data[(y * SCREEN_WIDTH + x) * 4 + 2] = color.b * 255;
-        imageData.data[(y * SCREEN_WIDTH + x) * 4 + 3] = color.a * 255;
+        const color = tile.brightness(Math.sqrt(player.position.sqrDistanceTo(t)));
+        const destP = (y * SCREEN_WIDTH + x) * 4;
+        imageData.data[destP + 0] = color.r * 255;
+        imageData.data[destP + 1] = color.g * 255;
+        imageData.data[destP + 2] = color.b * 255;
+        imageData.data[destP + 3] = color.a * 255;
       }
     }
   }
@@ -411,13 +411,14 @@ function renderWallsToImageData(imageData: ImageData, player: Player, scene: Sce
       const v = p.sub(player.position);
       const d = Vector2.fromAngle(player.direction);
       const stripHeight = SCREEN_HEIGHT / v.dot(d);
-      const color = cell.brightness(1 / v.dot(d));
+      const color = cell.brightness(v.dot(d));
       for (let dy = 0; dy < Math.ceil(stripHeight); ++dy) {
         const y = Math.floor((SCREEN_HEIGHT - stripHeight) * 0.5) + dy;
-        imageData.data[(y * SCREEN_WIDTH + x) * 4 + 0] = color.r * 255;
-        imageData.data[(y * SCREEN_WIDTH + x) * 4 + 1] = color.g * 255;
-        imageData.data[(y * SCREEN_WIDTH + x) * 4 + 2] = color.b * 255;
-        imageData.data[(y * SCREEN_WIDTH + x) * 4 + 3] = color.a * 255;
+        const destP = (y * SCREEN_WIDTH + x) * 4;
+        imageData.data[destP + 0] = color.r * 255;
+        imageData.data[destP + 1] = color.g * 255;
+        imageData.data[destP + 2] = color.b * 255;
+        imageData.data[destP + 3] = color.a * 255;
       }
     } else if (cell instanceof ImageData) {
       const v = p.sub(player.position);
@@ -439,14 +440,12 @@ function renderWallsToImageData(imageData: ImageData, player: Player, scene: Sce
       for (let y = by1; y < by2; ++y) {
         const tx = Math.floor(u * cell.width);
         const ty = Math.floor(((y - y1) / Math.ceil(stripHeight)) * cell.height);
+        const destP = (y * SCREEN_WIDTH + x) * 4;
 
-        imageData.data[(y * SCREEN_WIDTH + x) * 4 + 0] =
-          cell.data[(ty * cell.width + tx) * 4 + 0] / v.dot(d);
-        imageData.data[(y * SCREEN_WIDTH + x) * 4 + 1] =
-          cell.data[(ty * cell.width + tx) * 4 + 1] / v.dot(d);
-        imageData.data[(y * SCREEN_WIDTH + x) * 4 + 2] =
-          cell.data[(ty * cell.width + tx) * 4 + 2] / v.dot(d);
-        imageData.data[(y * SCREEN_WIDTH + x) * 4 + 3] = cell.data[(ty * cell.width + tx) * 4 + 3];
+        imageData.data[destP + 0] = (cell.data[(ty * cell.width + tx) * 4 + 0] / v.dot(d)) * 2;
+        imageData.data[destP + 1] = (cell.data[(ty * cell.width + tx) * 4 + 1] / v.dot(d)) * 2;
+        imageData.data[destP + 2] = (cell.data[(ty * cell.width + tx) * 4 + 2] / v.dot(d)) * 2;
+        imageData.data[destP + 3] = cell.data[(ty * cell.width + tx) * 4 + 3];
       }
     }
   }
@@ -460,9 +459,9 @@ function renderGameIntoImageData(
   player: Player,
   scene: Scene,
 ) {
-  const minimapPosition = Vector2.zero().add(canvasSize(ctx).scale(0.03));
-  const cellSize = ctx.canvas.width * 0.03;
-  const minimapSize = scene.size().scale(cellSize);
+  // const minimapPosition = Vector2.zero().add(canvasSize(ctx).scale(0.03));
+  // const cellSize = ctx.canvas.width * 0.03;
+  // const minimapSize = scene.size().scale(cellSize);
 
   backImageData.data.fill(255);
   renderCeilingToImageData(backImageData, player, scene);
@@ -472,7 +471,7 @@ function renderGameIntoImageData(
   backCtx.putImageData(backImageData, 0, 0);
   ctx.drawImage(backCtx.canvas, 0, 0, ctx.canvas.width, ctx.canvas.height);
 
-  renderMinimap(ctx, player, minimapPosition, minimapSize, scene);
+  // renderMinimap(ctx, player, minimapPosition, minimapSize, scene);
 
   ctx.font = "48px bold";
   ctx.fillStyle = "white";
@@ -527,9 +526,9 @@ function canPlayerGoThere(scene: Scene, newPosition: Vector2): boolean {
   backCtx.imageSmoothingEnabled = false;
 
   const [wall1, wall2, wall3] = await Promise.all([
-    loadImageData("assets/images/wezu_tex_cc_by/wall1_color.png").catch(() => RGBA.purple()),
-    loadImageData("assets/images/wezu_tex_cc_by/wall2_color.png").catch(() => RGBA.purple()),
-    loadImageData("assets/images/wezu_tex_cc_by/wall3_color.png").catch(() => RGBA.purple()),
+    loadImageData("assets/wlftex/eagle.png").catch(() => RGBA.purple()),
+    loadImageData("assets/wlftex/mossy.png").catch(() => RGBA.purple()),
+    loadImageData("assets/wlftex/greystone.png").catch(() => RGBA.purple()),
   ]);
 
   const scene: Scene = new Scene([
