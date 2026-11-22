@@ -212,7 +212,7 @@ function rayStep(p1: Vector2, p2: Vector2): Vector2 {
 type Tile = RGBA | ImageData | null;
 
 class Scene {
-  cells: Array<Tile>;
+  walls: Array<Tile>;
   width: number;
   height: number;
   floor1: RGBA;
@@ -220,22 +220,22 @@ class Scene {
   ceiling1: RGBA;
   ceiling2: RGBA;
 
-  constructor(cells: Array<Array<Tile>>) {
-    this.floor1 = new RGBA(0.094, 0.094, 0.094, 1);
-    this.floor2 = new RGBA(0.188, 0.188, 0.188, 1);
-    this.ceiling1 = RGBA.red();
-    this.ceiling2 = RGBA.blue();
-    this.height = cells.length;
+  constructor(walls: Array<Array<Tile>>) {
+    this.floor1 = new RGBA(0.094, 0.094 + 0.05, 0.094 + 0.05, 1);
+    this.floor2 = new RGBA(0.188, 0.188 + 0.05, 0.188 + 0.05, 1);
+    this.ceiling1 = new RGBA(0.094 + 0.05, 0.094, 0.094, 1);
+    this.ceiling2 = new RGBA(0.188 + 0.05, 0.188, 0.188, 1);
+    this.height = walls.length;
     this.width = Number.MIN_VALUE;
-    for (let row of cells) {
+    for (let row of walls) {
       this.width = Math.max(row.length, this.width);
     }
 
-    this.cells = [];
-    for (let row of cells) {
-      this.cells = this.cells.concat(row);
+    this.walls = [];
+    for (let row of walls) {
+      this.walls = this.walls.concat(row);
       for (let i = 0; i < this.width - row.length; ++i) {
-        this.cells.push(null);
+        this.walls.push(null);
       }
     }
   }
@@ -251,7 +251,7 @@ class Scene {
   getWall(p: Vector2): Tile | undefined {
     if (!this.contains(p)) return undefined;
     const fp = p.map(Math.floor);
-    return this.cells[fp.y * this.width + fp.x];
+    return this.walls[fp.y * this.width + fp.x];
   }
 
   isWall(p: Vector2): boolean {
