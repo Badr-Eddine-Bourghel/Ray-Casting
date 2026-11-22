@@ -348,6 +348,32 @@ function renderMinimap(
   ctx.restore();
 }
 
+function renderCeilingToImageData(imageData: ImageData, player: Player, scene: Scene) {
+  const pz = SCREEN_HEIGHT / 2;
+  const [p1, p2] = player.fovRange();
+  const bp = p1.sub(player.position).length();
+  for (let y = SCREEN_HEIGHT / 2; y < SCREEN_HEIGHT; ++y) {
+    const sz = SCREEN_HEIGHT - y - 1;
+
+    const ap = pz - sz;
+    const b = ((bp / ap) * pz) / NEAR_CLIPPING_PLANE;
+    const t1 = player.position.add(p1.sub(player.position).norm().scale(b));
+    const t2 = player.position.add(p2.sub(player.position).norm().scale(b));
+
+    for (let x = 0; x < SCREEN_WIDTH; ++x) {
+      const t = t1.lerp(t2, x / SCREEN_WIDTH);
+      const tile = scene.getCeiling(t);
+      if (tile instanceof RGBA) {
+        const color = tile.brightness(1 / Math.sqrt(player.position.sqrDistanceTo(t)));
+        imageData.data[(sz * SCREEN_WIDTH + x) * 4 + 0] = color.r * 255;
+        imageData.data[(sz * SCREEN_WIDTH + x) * 4 + 1] = color.g * 255;
+        imageData.data[(sz * SCREEN_WIDTH + x) * 4 + 2] = color.b * 255;
+        imageData.data[(sz * SCREEN_WIDTH + x) * 4 + 3] = color.a * 255;
+      }
+    }
+  }
+}
+
 function renderCeiling(ctx: CanvasRenderingContext2D, player: Player, scene: Scene) {
   ctx.save();
   ctx.scale(ctx.canvas.width / SCREEN_WIDTH, ctx.canvas.height / SCREEN_HEIGHT);
@@ -367,7 +393,7 @@ function renderCeiling(ctx: CanvasRenderingContext2D, player: Player, scene: Sce
       const t = t1.lerp(t2, x / SCREEN_WIDTH);
       const tile = scene.getCeiling(t);
       if (tile instanceof RGBA) {
-        ctx.fillStyle = tile.toStyle();
+        ctx.fillStyle = tile.brightness(1 / Math.sqrt(player.position.sqrDistanceTo(t))).toStyle();
         ctx.fillRect(x, sz, 1, 1);
       } else if (tile instanceof HTMLImageElement) {
         const c = t.map((x) => x - Math.floor(x));
@@ -402,6 +428,32 @@ function fog(ctx: CanvasRenderingContext2D) {
   ctx.restore();
 }
 
+function renderFloorToImageData(imageData: ImageData, player: Player, scene: Scene) {
+  const pz = SCREEN_HEIGHT / 2;
+  const [p1, p2] = player.fovRange();
+  const bp = p1.sub(player.position).length();
+  for (let y = SCREEN_HEIGHT / 2; y < SCREEN_HEIGHT; ++y) {
+    const sz = SCREEN_HEIGHT - y - 1;
+
+    const ap = pz - sz;
+    const b = ((bp / ap) * pz) / NEAR_CLIPPING_PLANE;
+    const t1 = player.position.add(p1.sub(player.position).norm().scale(b));
+    const t2 = player.position.add(p2.sub(player.position).norm().scale(b));
+
+    for (let x = 0; x < SCREEN_WIDTH; ++x) {
+      const t = t1.lerp(t2, x / SCREEN_WIDTH);
+      const tile = scene.getFloor(t);
+      if (tile instanceof RGBA) {
+        const color = tile.brightness(1 / Math.sqrt(player.position.sqrDistanceTo(t)));
+        imageData.data[(y * SCREEN_WIDTH + x) * 4 + 0] = color.r * 255;
+        imageData.data[(y * SCREEN_WIDTH + x) * 4 + 1] = color.g * 255;
+        imageData.data[(y * SCREEN_WIDTH + x) * 4 + 2] = color.b * 255;
+        imageData.data[(y * SCREEN_WIDTH + x) * 4 + 3] = color.a * 255;
+      }
+    }
+  }
+}
+
 function renderFloor(ctx: CanvasRenderingContext2D, player: Player, scene: Scene) {
   ctx.save();
   ctx.scale(ctx.canvas.width / SCREEN_WIDTH, ctx.canvas.height / SCREEN_HEIGHT);
@@ -421,7 +473,7 @@ function renderFloor(ctx: CanvasRenderingContext2D, player: Player, scene: Scene
       const t = t1.lerp(t2, x / SCREEN_WIDTH);
       const tile = scene.getFloor(t);
       if (tile instanceof RGBA) {
-        ctx.fillStyle = tile.toStyle();
+        ctx.fillStyle = tile.brightness(1 / Math.sqrt(player.position.sqrDistanceTo(t))).toStyle();
         ctx.fillRect(x, y, 1, 1);
       } else if (tile instanceof HTMLImageElement) {
         const c = t.map((x) => x - Math.floor(x));
@@ -441,6 +493,72 @@ function renderFloor(ctx: CanvasRenderingContext2D, player: Player, scene: Scene
   }
 
   ctx.restore();
+}
+
+function renderWallsToImageData(ImageData: ImageData, player: Player, scene: Scene) {
+  const [r1, r2] = player.fovRange();
+
+  for (let x = 0; x < SCREEN_WIDTH; ++x) {
+    const p = castRay(scene, player.position, r1.lerp(r2, x / SCREEN_WIDTH));
+    const c = hittingCell(player.position, p);
+    const cell = scene.getWall(c);
+    if (cell instanceof RGBA) {
+      const v = p.sub(player.position);
+      const d = Vector2.fromAngle(player.direction);
+      const stripHeight = SCREEN_HEIGHT / v.dot(d);
+      const color = cell.brightness(1 / v.dot(d));
+      for (let dy = 0; dy < Math.ceil(stripHeight); ++dy) {
+        const y = Math.floor((SCREEN_HEIGHT - stripHeight) * 0.5) + dy;
+        ImageData.data[(y * SCREEN_WIDTH + x) * 4 + 0] = color.r * 255;
+        ImageData.data[(y * SCREEN_WIDTH + x) * 4 + 1] = color.g * 255;
+        ImageData.data[(y * SCREEN_WIDTH + x) * 4 + 2] = color.b * 255;
+        ImageData.data[(y * SCREEN_WIDTH + x) * 4 + 3] = color.a * 255;
+      }
+    } else if (cell instanceof HTMLImageElement) {
+      const v = p.sub(player.position);
+      const d = Vector2.fromAngle(player.direction);
+      const stripHeight = SCREEN_HEIGHT / v.dot(d);
+      const color = RGBA.purple().brightness(1 / v.dot(d));
+      for (let dy = 0; dy < Math.ceil(stripHeight); ++dy) {
+        const y = Math.floor((SCREEN_HEIGHT - stripHeight) * 0.5) + dy;
+        ImageData.data[(y * SCREEN_WIDTH + x) * 4 + 0] = color.r * 255;
+        ImageData.data[(y * SCREEN_WIDTH + x) * 4 + 1] = color.g * 255;
+        ImageData.data[(y * SCREEN_WIDTH + x) * 4 + 2] = color.b * 255;
+        ImageData.data[(y * SCREEN_WIDTH + x) * 4 + 3] = color.a * 255;
+      }
+      /*
+      const v = p.sub(player.position);
+      const d = Vector2.fromAngle(player.direction);
+      const stripHeight = SCREEN_HEIGHT / v.dot(d);
+
+      const t = p.sub(c);
+      let u = 0;
+      if ((Math.abs(t.x) < EPS || Math.abs(t.x - 1) < EPS) && t.y > 0) {
+        u = t.y;
+      } else {
+        u = t.x;
+      }
+      ctx.drawImage(
+        cell,
+        Math.floor(u * cell.width),
+        0,
+        1,
+        cell.height,
+        Math.floor(x),
+        Math.floor((SCREEN_HEIGHT - stripHeight) * 0.5),
+        Math.ceil(1),
+        Math.ceil(stripHeight),
+      );
+      ctx.fillStyle = new RGBA(0, 0, 0, 1 - 1 / v.dot(d)).toStyle();
+      ctx.fillRect(
+        Math.floor(x),
+        Math.floor((SCREEN_HEIGHT - stripHeight) * 0.5),
+        Math.ceil(1),
+        Math.ceil(stripHeight),
+      );
+      */
+    }
+  }
 }
 
 function renderWalls(ctx: CanvasRenderingContext2D, player: Player, scene: Scene) {
@@ -498,6 +616,13 @@ function renderWalls(ctx: CanvasRenderingContext2D, player: Player, scene: Scene
   ctx.restore();
 }
 
+function renderGameIntoImageData(imageData: ImageData, player: Player, scene: Scene) {
+  imageData.data.fill(255);
+  renderCeilingToImageData(imageData, player, scene);
+  renderFloorToImageData(imageData, player, scene);
+  renderWallsToImageData(imageData, player, scene);
+}
+
 function renderGame(ctx: CanvasRenderingContext2D, player: Player, scene: Scene) {
   const minimapPosition = Vector2.zero().add(canvasSize(ctx).scale(0.03));
   const cellSize = ctx.canvas.width * 0.03;
@@ -531,6 +656,34 @@ function canPlayerGoThere(scene: Scene, newPosition: Vector2): boolean {
   return true;
 }
 
+function testBackCanvas(ctx: CanvasRenderingContext2D) {
+  const h = 9;
+  const w = 16;
+  const backImageData = new ImageData(w, h);
+  const backCanvas = new OffscreenCanvas(w, h);
+  const backCtx = backCanvas.getContext("2d");
+  if (backCtx === null) throw new Error("2D context is not supported");
+
+  for (let y = 0; y < h; ++y) {
+    for (let x = 0; x < w; ++x) {
+      if ((x + y) % 2 === 0) {
+        backImageData.data[(y * w + x) * 4 + 0] = 255;
+        backImageData.data[(y * w + x) * 4 + 1] = 0;
+        backImageData.data[(y * w + x) * 4 + 2] = 0;
+        backImageData.data[(y * w + x) * 4 + 3] = 255;
+      } else {
+        backImageData.data[(y * w + x) * 4 + 0] = 255;
+        backImageData.data[(y * w + x) * 4 + 1] = 255;
+        backImageData.data[(y * w + x) * 4 + 2] = 255;
+        backImageData.data[(y * w + x) * 4 + 3] = 255;
+      }
+    }
+  }
+
+  backCtx.putImageData(backImageData, 0, 0);
+  ctx.drawImage(backCanvas, 0, 0, ctx.canvas.width, ctx.canvas.height);
+}
+
 (async () => {
   const game = document.getElementById("game") as HTMLCanvasElement | null;
   if (game === null) throw new Error("No canvas with id 'game' is found");
@@ -539,6 +692,13 @@ function canPlayerGoThere(scene: Scene, newPosition: Vector2): boolean {
   game.width = 16 * factor;
   game.height = 9 * factor;
   if (ctx === null) throw new Error("2d context is not supported ");
+  ctx.imageSmoothingEnabled = false;
+
+  const backImageData = new ImageData(SCREEN_WIDTH, SCREEN_HEIGHT);
+  const backCanvas = new OffscreenCanvas(SCREEN_WIDTH, SCREEN_HEIGHT);
+  const backCtx = backCanvas.getContext("2d");
+  if (backCtx === null) throw new Error("2D context is not supported");
+  backCtx.imageSmoothingEnabled = false;
 
   const wall1 = await loadImageData("assets/images/wezu_tex_cc_by/wall1_color.png").catch(() =>
     RGBA.purple(),
@@ -635,7 +795,12 @@ function canPlayerGoThere(scene: Scene, newPosition: Vector2): boolean {
     if (canPlayerGoThere(scene, new Vector2(nx, player.position.y))) player.position.x = nx;
     const ny = player.position.y + velocity.y * deltaTime;
     if (canPlayerGoThere(scene, new Vector2(player.position.x, ny))) player.position.y = ny;
-    renderGame(ctx, player, scene);
+    // renderGame(ctx, player, scene);
+    renderGameIntoImageData(backImageData, player, scene);
+    backCtx.putImageData(backImageData, 0, 0);
+    ctx.drawImage(backCanvas, 0, 0, ctx.canvas.width, ctx.canvas.height);
+    ctx.font = "48px bold";
+    ctx.fillText(`${Math.floor(1 / deltaTime)}`, 100, 100);
     window.requestAnimationFrame(frame);
   };
   window.requestAnimationFrame((timestamp) => {
