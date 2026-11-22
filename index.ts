@@ -482,7 +482,7 @@ function renderFloor(ctx: CanvasRenderingContext2D, player: Player, scene: Scene
   ctx.restore();
 }
 
-function renderWallsToImageData(ImageData: ImageData, player: Player, scene: Scene) {
+function renderWallsToImageData(imageData: ImageData, player: Player, scene: Scene) {
   const [r1, r2] = player.fovRange();
 
   for (let x = 0; x < SCREEN_WIDTH; ++x) {
@@ -496,24 +496,12 @@ function renderWallsToImageData(ImageData: ImageData, player: Player, scene: Sce
       const color = cell.brightness(1 / v.dot(d));
       for (let dy = 0; dy < Math.ceil(stripHeight); ++dy) {
         const y = Math.floor((SCREEN_HEIGHT - stripHeight) * 0.5) + dy;
-        ImageData.data[(y * SCREEN_WIDTH + x) * 4 + 0] = color.r * 255;
-        ImageData.data[(y * SCREEN_WIDTH + x) * 4 + 1] = color.g * 255;
-        ImageData.data[(y * SCREEN_WIDTH + x) * 4 + 2] = color.b * 255;
-        ImageData.data[(y * SCREEN_WIDTH + x) * 4 + 3] = color.a * 255;
+        imageData.data[(y * SCREEN_WIDTH + x) * 4 + 0] = color.r * 255;
+        imageData.data[(y * SCREEN_WIDTH + x) * 4 + 1] = color.g * 255;
+        imageData.data[(y * SCREEN_WIDTH + x) * 4 + 2] = color.b * 255;
+        imageData.data[(y * SCREEN_WIDTH + x) * 4 + 3] = color.a * 255;
       }
-    } else if (cell instanceof HTMLImageElement) {
-      const v = p.sub(player.position);
-      const d = Vector2.fromAngle(player.direction);
-      const stripHeight = SCREEN_HEIGHT / v.dot(d);
-      const color = RGBA.purple().brightness(1 / v.dot(d));
-      for (let dy = 0; dy < Math.ceil(stripHeight); ++dy) {
-        const y = Math.floor((SCREEN_HEIGHT - stripHeight) * 0.5) + dy;
-        ImageData.data[(y * SCREEN_WIDTH + x) * 4 + 0] = color.r * 255;
-        ImageData.data[(y * SCREEN_WIDTH + x) * 4 + 1] = color.g * 255;
-        ImageData.data[(y * SCREEN_WIDTH + x) * 4 + 2] = color.b * 255;
-        ImageData.data[(y * SCREEN_WIDTH + x) * 4 + 3] = color.a * 255;
-      }
-      /*
+    } else if (cell instanceof ImageData) {
       const v = p.sub(player.position);
       const d = Vector2.fromAngle(player.direction);
       const stripHeight = SCREEN_HEIGHT / v.dot(d);
@@ -525,6 +513,19 @@ function renderWallsToImageData(ImageData: ImageData, player: Player, scene: Sce
       } else {
         u = t.x;
       }
+
+      for (let dy = 0; dy < Math.ceil(stripHeight); ++dy) {
+        const v = dy / Math.ceil(stripHeight);
+        const tx = Math.floor(u * cell.width);
+        const ty = Math.floor(v * cell.height);
+
+        const y = Math.floor((SCREEN_HEIGHT - stripHeight) * 0.5) + dy;
+        imageData.data[(y * SCREEN_WIDTH + x) * 4 + 0] = cell.data[(ty * cell.width + tx) * 4 + 0];
+        imageData.data[(y * SCREEN_WIDTH + x) * 4 + 1] = cell.data[(ty * cell.width + tx) * 4 + 1];
+        imageData.data[(y * SCREEN_WIDTH + x) * 4 + 2] = cell.data[(ty * cell.width + tx) * 4 + 2];
+        imageData.data[(y * SCREEN_WIDTH + x) * 4 + 3] = cell.data[(ty * cell.width + tx) * 4 + 3];
+      }
+      /*
       ctx.drawImage(
         cell,
         Math.floor(u * cell.width),
@@ -640,6 +641,7 @@ function renderGame(ctx: CanvasRenderingContext2D, player: Player, scene: Scene)
   renderWalls(ctx, player, scene);
   renderMinimap(ctx, player, minimapPosition, minimapSize, scene);
 }
+
 async function loadImage(url: string): Promise<HTMLImageElement> {
   const image = new Image();
   image.src = url;
@@ -726,12 +728,12 @@ function testBackCanvas(ctx: CanvasRenderingContext2D) {
   );
 
   const scene: Scene = new Scene([
-    [null, null, wall2, wall2, null, null, null, null, null],
+    [null, null, wall1, wall2, null, null, null, null, null],
     [null, null, null, wall3, null, null, null, null, null],
-    [null, wall1, wall2, wall2, null, null, null, null, null],
+    [null, wall1, wall2, wall1, null, null, null, null, null],
     [null, null, null, null, null, null, null, null, null],
     [null, null, null, null, null, null, null, null, null],
-    [null, wall3, null, null, null, null, null, null, null],
+    [null, null, null, null, null, null, null, null, null],
     [null, null, null, null, null, null, null, null, null],
   ]);
 

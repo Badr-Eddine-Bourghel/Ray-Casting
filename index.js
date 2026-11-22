@@ -384,7 +384,7 @@ function renderFloor(ctx, player, scene) {
     }
     ctx.restore();
 }
-function renderWallsToImageData(ImageData, player, scene) {
+function renderWallsToImageData(imageData, player, scene) {
     const [r1, r2] = player.fovRange();
     for (let x = 0; x < SCREEN_WIDTH; ++x) {
         const p = castRay(scene, player.position, r1.lerp(r2, x / SCREEN_WIDTH));
@@ -397,36 +397,35 @@ function renderWallsToImageData(ImageData, player, scene) {
             const color = cell.brightness(1 / v.dot(d));
             for (let dy = 0; dy < Math.ceil(stripHeight); ++dy) {
                 const y = Math.floor((SCREEN_HEIGHT - stripHeight) * 0.5) + dy;
-                ImageData.data[(y * SCREEN_WIDTH + x) * 4 + 0] = color.r * 255;
-                ImageData.data[(y * SCREEN_WIDTH + x) * 4 + 1] = color.g * 255;
-                ImageData.data[(y * SCREEN_WIDTH + x) * 4 + 2] = color.b * 255;
-                ImageData.data[(y * SCREEN_WIDTH + x) * 4 + 3] = color.a * 255;
+                imageData.data[(y * SCREEN_WIDTH + x) * 4 + 0] = color.r * 255;
+                imageData.data[(y * SCREEN_WIDTH + x) * 4 + 1] = color.g * 255;
+                imageData.data[(y * SCREEN_WIDTH + x) * 4 + 2] = color.b * 255;
+                imageData.data[(y * SCREEN_WIDTH + x) * 4 + 3] = color.a * 255;
             }
         }
-        else if (cell instanceof HTMLImageElement) {
+        else if (cell instanceof ImageData) {
             const v = p.sub(player.position);
             const d = Vector2.fromAngle(player.direction);
             const stripHeight = SCREEN_HEIGHT / v.dot(d);
-            const color = RGBA.purple().brightness(1 / v.dot(d));
-            for (let dy = 0; dy < Math.ceil(stripHeight); ++dy) {
-                const y = Math.floor((SCREEN_HEIGHT - stripHeight) * 0.5) + dy;
-                ImageData.data[(y * SCREEN_WIDTH + x) * 4 + 0] = color.r * 255;
-                ImageData.data[(y * SCREEN_WIDTH + x) * 4 + 1] = color.g * 255;
-                ImageData.data[(y * SCREEN_WIDTH + x) * 4 + 2] = color.b * 255;
-                ImageData.data[(y * SCREEN_WIDTH + x) * 4 + 3] = color.a * 255;
-            }
-            /*
-            const v = p.sub(player.position);
-            const d = Vector2.fromAngle(player.direction);
-            const stripHeight = SCREEN_HEIGHT / v.dot(d);
-      
             const t = p.sub(c);
             let u = 0;
             if ((Math.abs(t.x) < EPS || Math.abs(t.x - 1) < EPS) && t.y > 0) {
-              u = t.y;
-            } else {
-              u = t.x;
+                u = t.y;
             }
+            else {
+                u = t.x;
+            }
+            for (let dy = 0; dy < Math.ceil(stripHeight); ++dy) {
+                const v = dy / Math.ceil(stripHeight);
+                const tx = Math.floor(u * cell.width);
+                const ty = Math.floor(v * cell.height);
+                const y = Math.floor((SCREEN_HEIGHT - stripHeight) * 0.5) + dy;
+                imageData.data[(y * SCREEN_WIDTH + x) * 4 + 0] = cell.data[(ty * cell.width + tx) * 4 + 0];
+                imageData.data[(y * SCREEN_WIDTH + x) * 4 + 1] = cell.data[(ty * cell.width + tx) * 4 + 1];
+                imageData.data[(y * SCREEN_WIDTH + x) * 4 + 2] = cell.data[(ty * cell.width + tx) * 4 + 2];
+                imageData.data[(y * SCREEN_WIDTH + x) * 4 + 3] = cell.data[(ty * cell.width + tx) * 4 + 3];
+            }
+            /*
             ctx.drawImage(
               cell,
               Math.floor(u * cell.width),
@@ -584,12 +583,12 @@ function testBackCanvas(ctx) {
     const wall2 = await loadImageData("assets/images/wezu_tex_cc_by/wall2_color.png").catch(() => RGBA.purple());
     const wall3 = await loadImageData("assets/images/wezu_tex_cc_by/wall3_color.png").catch(() => RGBA.purple());
     const scene = new Scene([
-        [null, null, wall2, wall2, null, null, null, null, null],
+        [null, null, wall1, wall2, null, null, null, null, null],
         [null, null, null, wall3, null, null, null, null, null],
-        [null, wall1, wall2, wall2, null, null, null, null, null],
+        [null, wall1, wall2, wall1, null, null, null, null, null],
         [null, null, null, null, null, null, null, null, null],
         [null, null, null, null, null, null, null, null, null],
-        [null, wall3, null, null, null, null, null, null, null],
+        [null, null, null, null, null, null, null, null, null],
         [null, null, null, null, null, null, null, null, null],
     ]);
     const player = new Player(scene.size().mul(new Vector2(0.7, 0.63)), Math.PI * 1.25);
